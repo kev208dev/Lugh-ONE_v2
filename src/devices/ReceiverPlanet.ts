@@ -2,6 +2,11 @@ import type { PuzzleState } from '../level/types';
 
 export type PlanetTheme = 'earth' | 'mars';
 
+export interface PlanetSpectrumBand {
+  color: string;
+  intensity: number;
+}
+
 interface PlanetPalette {
   highlight: string;
   mid: string;
@@ -40,6 +45,8 @@ export interface PlanetVisualState {
    * puzzleState is 'STABILIZING' — spec: ring circumference fills over the
    * ~1.5s continuous-hold window. */
   stabilizeProgress: number;
+  /** The exact wavelength colors currently landing in this receiver. */
+  spectrumBands?: PlanetSpectrumBand[];
   /** Timestamp (same clock as the `nowMs` draw() argument) the puzzle
    * became SOLVED. Present only once solved; drives a brief one-shot
    * ripple, not a looping effect. */
@@ -124,7 +131,7 @@ export class ReceiverPlanetRenderer {
     this.lastState = state;
     this.lastNowMs = nowMs;
 
-    const { percent, goalMinPower, puzzleState, stabilizeProgress, solvedAtMs } = state;
+    const { percent, goalMinPower, puzzleState, stabilizeProgress, solvedAtMs, spectrumBands = [] } = state;
     const ratio = goalMinPower > 0 ? percent / goalMinPower : 0;
     const tier = illuminationTier(percent, goalMinPower);
 
@@ -168,6 +175,37 @@ export class ReceiverPlanetRenderer {
       ctx.arc(cx, cy, planetR, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(4,6,10,${overlayAlpha})`;
       ctx.fill();
+    }
+
+    // Project the same wavelength sequence that left PRISM onto the planet
+    // body. This is intentionally clipped to the globe and screen-blended,
+    // so its rainbow reads as received light rather than replacing the
+    // planet's own material colors.
+    if (spectrumBands.length > 0) {
+      const spectrumGradient = ctx.createLinearGradient(
+        cx - planetR,
+        cy - planetR * 0.45,
+        cx + planetR,
+        cy + planetR * 0.45
+      );
+      if (spectrumBands.length === 1) {
+        spectrumGradient.addColorStop(0, spectrumBands[0].color);
+        spectrumGradient.addColorStop(1, spectrumBands[0].color);
+      } else {
+        spectrumBands.forEach((band, index) => {
+          spectrumGradient.addColorStop(index / (spectrumBands.length - 1), band.color);
+        });
+      }
+      const peakIntensity = Math.max(...spectrumBands.map((band) => clamp01(band.intensity)));
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, planetR, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = 0.22 + peakIntensity * 0.48;
+      ctx.fillStyle = spectrumGradient;
+      ctx.fillRect(cx - planetR, cy - planetR, planetR * 2, planetR * 2);
+      ctx.restore();
     }
 
     // --- Power ring: background track -----------------------------------

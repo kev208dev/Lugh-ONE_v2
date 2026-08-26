@@ -14,6 +14,14 @@ export interface PrismTriangle {
   vertices: [Point, Point, Point];
 }
 
+export interface PrismTrace {
+  /** First physical contact with the glass, even when every wavelength is
+   * later lost to total internal reflection. Null means the ray missed the
+   * prism entirely. */
+  entryPoint: Point | null;
+  rays: SpectralRay[];
+}
+
 // --- local 2D vector helpers -------------------------------------------------
 
 function sub(a: Point, b: Point): Point {
@@ -116,11 +124,11 @@ interface Edge {
  * wavelength, returning one SpectralRay per wavelength that successfully
  * enters AND exits the prism.
  */
-export function tracePrismSpectrum(
+export function tracePrismInteraction(
   incomingOrigin: Point,
   incomingDir: Point,
   triangle: PrismTriangle
-): SpectralRay[] {
+): PrismTrace {
   const d0 = normalize(incomingDir);
 
   const [v0, v1, v2] = triangle.vertices;
@@ -153,7 +161,7 @@ export function tracePrismSpectrum(
 
   if (!entryEdge || !entryHit) {
     // Ray misses the prism entirely.
-    return [];
+    return { entryPoint: null, rays: [] };
   }
 
   const entryPoint = entryHit.point;
@@ -203,5 +211,16 @@ export function tracePrismSpectrum(
     });
   }
 
-  return results;
+  return { entryPoint, rays: results };
+}
+
+/** Backward-compatible spectrum-only API used by the physics callers and
+ * existing tests. New rendering code should prefer tracePrismInteraction()
+ * so it can stop the white beam exactly at the glass contact point. */
+export function tracePrismSpectrum(
+  incomingOrigin: Point,
+  incomingDir: Point,
+  triangle: PrismTriangle
+): SpectralRay[] {
+  return tracePrismInteraction(incomingOrigin, incomingDir, triangle).rays;
 }

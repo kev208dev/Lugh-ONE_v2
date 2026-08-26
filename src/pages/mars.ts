@@ -1,7 +1,7 @@
-import type { WindowGeometry } from '../runtime/types';
+import type { ReceiverBeam, WindowGeometry } from '../runtime/types';
 import { bootstrapDevicePage } from './deviceBootstrap';
-import { ReceiverPlanetRenderer } from '../devices/ReceiverPlanet';
-import { LightRenderer } from '../rendering/LightRenderer';
+import { ReceiverPlanetRenderer, type PlanetSpectrumBand } from '../devices/ReceiverPlanet';
+import { LightRenderer, type ColoredBeamSegment } from '../rendering/LightRenderer';
 import { windowRectGlobal, globalToLocal } from '../runtime/globalCoords';
 import { clipSegmentToRect } from '../optics/Ray';
 import { currentLevel } from '../level/session';
@@ -23,9 +23,10 @@ let puzzleState: PuzzleState = 'PLAYING';
 let stabilizeProgress = 0;
 let solvedAtMs: number | undefined;
 let animationFrame: number | undefined;
+let spectrumBands: PlanetSpectrumBand[] = [];
 
 function drawPlanet(): void {
-  planetRenderer.draw({ percent, goalMinPower, puzzleState, stabilizeProgress, solvedAtMs }, performance.now());
+  planetRenderer.draw({ percent, goalMinPower, puzzleState, stabilizeProgress, solvedAtMs, spectrumBands }, performance.now());
   if (animationFrame === undefined && (puzzleState === 'STABILIZING' || (solvedAtMs !== undefined && performance.now() - solvedAtMs < 900))) {
     animationFrame = requestAnimationFrame(() => {
       animationFrame = undefined;
@@ -57,27 +58,40 @@ const { bus } = bootstrapDevicePage('mars', {
 const powerEl = document.getElementById('power');
 const bannerEl = document.getElementById('level-banner');
 
+function drawIncomingSpectrum(beam: ReceiverBeam | null): void {
+  if (!selfGeometry || !beam) {
+    rayRenderer.clear();
+    return;
+  }
+
+  const rect = windowRectGlobal(selfGeometry);
+  const segments: ColoredBeamSegment[] = [];
+  for (const band of beam.bands) {
+    const p1 = band.originGlobal;
+    const p2 = {
+      x: p1.x + band.directionGlobal.x * RAY_TEST_DISTANCE,
+      y: p1.y + band.directionGlobal.y * RAY_TEST_DISTANCE
+    };
+    const clipped = clipSegmentToRect(p1, p2, rect);
+    if (!clipped) continue;
+    segments.push({
+      start: globalToLocal(clipped[0], selfGeometry),
+      end: globalToLocal(clipped[1], selfGeometry),
+      color: band.color,
+      intensity: band.intensity
+    });
+  }
+  rayRenderer.drawSpectralSegments(segments);
+}
+
 bus.subscribe((msg) => {
   if (msg.type === 'level-state') {
     percent = msg.marsPercent;
+    spectrumBands = msg.marsBeam?.bands.map(({ color, intensity }) => ({ color, intensity })) ?? [];
     if (powerEl) powerEl.textContent = `${Math.round(msg.marsPercent)}%`;
     if (bannerEl) bannerEl.classList.toggle('visible', msg.complete);
     drawPlanet();
-
-    if (selfGeometry && msg.marsBeam) {
-      const { originGlobal, directionGlobal, color } = msg.marsBeam;
-      const p1 = originGlobal;
-      const p2 = { x: p1.x + directionGlobal.x * RAY_TEST_DISTANCE, y: p1.y + directionGlobal.y * RAY_TEST_DISTANCE };
-      const myRect = windowRectGlobal(selfGeometry);
-      const clipped = clipSegmentToRect(p1, p2, myRect);
-      if (clipped) {
-        rayRenderer.drawSegment(globalToLocal(clipped[0], selfGeometry), globalToLocal(clipped[1], selfGeometry), color);
-      } else {
-        rayRenderer.clear();
-      }
-    } else {
-      rayRenderer.clear();
-    }
+    drawIncomingSpectrum(msg.marsBeam);
   } else if (msg.type === 'puzzle-state') {
     const wasSolved = puzzleState === 'SOLVED';
     puzzleState = msg.state;

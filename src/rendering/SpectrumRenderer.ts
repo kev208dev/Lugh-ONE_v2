@@ -1,4 +1,6 @@
 import type { SpectrumFan } from './spectrumGeometry';
+import type { SpectralRay } from '../optics/PrismPhysics';
+import { wavelengthToRgb } from '../optics/Spectrum';
 
 /**
  * Thin wrapper around a full-window <canvas> that draws the refracted
@@ -17,6 +19,7 @@ export class SpectrumRenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private lastFan: SpectrumFan | null = null;
+  private lastRays: SpectralRay[] = [];
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -31,7 +34,7 @@ export class SpectrumRenderer {
   private resize(): void {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
-    this.drawFan(this.lastFan);
+    this.drawFan(this.lastFan, this.lastRays);
   }
 
   /**
@@ -39,66 +42,84 @@ export class SpectrumRenderer {
    * physics didn't produce a valid spectrum this frame — ray missed the
    * prism, or fewer than 2 wavelengths survived tracing).
    */
-  drawFan(fan: SpectrumFan | null): void {
+  drawFan(fan: SpectrumFan | null, rays: SpectralRay[] = []): void {
     this.clear();
     this.lastFan = fan;
-
-    if (fan === null || fan.stops.length < 2) return;
+    this.lastRays = rays;
 
     const { ctx, canvas } = this;
 
-    // fan.endAngle is already wraparound-corrected by spectrumGeometry, so
-    // the sweep below is guaranteed small and correctly signed — do NOT
-    // re-apply any wraparound correction here.
-    const sweep = fan.endAngle - fan.startAngle;
-    const anticlockwise = sweep < 0;
-
-    // IMPORTANT: createConicGradient's offset is ALWAYS a fraction of one
-    // FULL revolution (2π) starting at its reference angle, walking in the
-    // direction of INCREASING angle — offset 1 means "all the way around",
-    // not "at fan.endAngle". `fan.stops[].offset` (from spectrumGeometry) is
-    // only relative to the small physical sweep (fan.startAngle..endAngle),
-    // stop[0]=0 (violet) .. stop[last]=1 (red). To land every stop inside
-    // the same tiny angular slice we actually draw, the gradient's
-    // reference angle must be whichever endpoint the arc walks AWAY FROM in
-    // the increasing-angle direction:
-    //   - sweep >= 0: the arc's angle increases from startAngle to
-    //     endAngle, so reference = startAngle, and each stop's true offset
-    //     grows with it (0 at violet .. sweepFraction at red) — no reversal
-    //     needed.
-    //   - sweep < 0: the arc's angle DECREASES from startAngle to endAngle,
-    //     i.e. increases from endAngle up to startAngle. Using startAngle as
-    //     the reference here would place the two endpoints on OPPOSITE ends
-    //     of the [0,1] range (0 and ~1, wrapping the "long way" around) even
-    //     though they're only a few degrees apart, making the gradient
-    //     jump straight to the boundary color everywhere except a single
-    //     point — reference must be endAngle instead, and the stop order
-    //     reverses accordingly (red, at endAngle, becomes offset 0; violet,
-    //     at startAngle, becomes offset |sweepFraction|).
-    const sweepFraction = Math.abs(sweep) / (2 * Math.PI);
-    const refAngle = sweep >= 0 ? fan.startAngle : fan.endAngle;
-    const gradient = ctx.createConicGradient(refAngle, fan.apex.x, fan.apex.y);
-    for (const stop of fan.stops) {
-      const localOffset = Math.min(1, Math.max(0, stop.offset));
-      const forwardLocalOffset = sweep >= 0 ? localOffset : 1 - localOffset;
-      const trueOffset = Math.min(1, Math.max(0, forwardLocalOffset * sweepFraction));
-      gradient.addColorStop(trueOffset, stop.color);
+    // The color transformation begins at the glass contact point. Draw the
+    // refracted wavelength paths inside the prism so the incoming white beam
+    // visibly becomes a spectrum instead of appearing to pass straight
+    // through the glass unchanged.
+    if (rays.length > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      for (const ray of rays) {
+        const { r, g, b } = wavelengthToRgb(ray.wavelengthNm);
+        const color = `rgb(${r},${g},${b})`;
+        ctx.beginPath();
+        ctx.moveTo(ray.entryPoint.x, ray.entryPoint.y);
+        ctx.lineTo(ray.exitPoint.x, ray.exitPoint.y);
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = 0.14;
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.globalAlpha = 0.72;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
-    // Full diagonal — generous, guarantees full coverage from any apex
-    // position, including one near a corner.
-    const radius = Math.hypot(canvas.width, canvas.height);
+    if (fan !== null && fan.stops.length >= 2) {
+      // fan.endAngle is already wraparound-corrected by spectrumGeometry,
+      // so the sweep below is guaranteed small and correctly signed.
+      const sweep = fan.endAngle - fan.startAngle;
+      const anticlockwise = sweep < 0;
 
-    ctx.beginPath();
-    ctx.moveTo(fan.apex.x, fan.apex.y);
-    ctx.arc(fan.apex.x, fan.apex.y, radius, fan.startAngle, fan.endAngle, anticlockwise);
-    ctx.closePath();
+      // createConicGradient offsets span a full revolution, while the real
+      // spectrum occupies only this small angular sweep. Remap each physical
+      // wavelength stop into that fraction and reverse it for a negative
+      // sweep so the violet-to-red order never wraps around the long way.
+      const sweepFraction = Math.abs(sweep) / (2 * Math.PI);
+      const refAngle = sweep >= 0 ? fan.startAngle : fan.endAngle;
+      const gradient = ctx.createConicGradient(refAngle, fan.apex.x, fan.apex.y);
+      for (const stop of fan.stops) {
+        const localOffset = Math.min(1, Math.max(0, stop.offset));
+        const forwardLocalOffset = sweep >= 0 ? localOffset : 1 - localOffset;
+        const trueOffset = Math.min(1, Math.max(0, forwardLocalOffset * sweepFraction));
+        gradient.addColorStop(trueOffset, stop.color);
+      }
 
-    ctx.save();
-    ctx.globalAlpha = 0.6;
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.restore();
+      const radius = Math.hypot(canvas.width, canvas.height);
+      ctx.beginPath();
+      ctx.moveTo(fan.apex.x, fan.apex.y);
+      ctx.arc(fan.apex.x, fan.apex.y, radius, fan.startAngle, fan.endAngle, anticlockwise);
+      ctx.closePath();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.64;
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    if (rays.length > 0) {
+      const contact = rays[0].entryPoint;
+      const flare = ctx.createRadialGradient(contact.x, contact.y, 0, contact.x, contact.y, 18);
+      flare.addColorStop(0, 'rgba(255,255,255,0.95)');
+      flare.addColorStop(0.25, 'rgba(210,230,255,0.5)');
+      flare.addColorStop(1, 'rgba(127,184,255,0)');
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = flare;
+      ctx.fillRect(contact.x - 18, contact.y - 18, 36, 36);
+      ctx.restore();
+    }
   }
 
   clear(): void {

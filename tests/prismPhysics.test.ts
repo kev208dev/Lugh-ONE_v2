@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tracePrismSpectrum } from '../src/optics/PrismPhysics';
+import { tracePrismInteraction, tracePrismSpectrum } from '../src/optics/PrismPhysics';
 import type { PrismTriangle, SpectralRay } from '../src/optics/PrismPhysics';
 import { sampleWavelengths } from '../src/optics/Spectrum';
 import type { Point } from '../src/optics/Ray';
@@ -95,6 +95,24 @@ function expectFiniteRay(ray: SpectralRay) {
 // --- tests ---------------------------------------------------------------------
 
 describe('tracePrismSpectrum', () => {
+  it('reports the glass contact point separately from the outgoing spectrum', () => {
+    const interaction = tracePrismInteraction(INCOMING_ORIGIN, INCOMING_DIR, TRIANGLE);
+
+    expect(interaction.entryPoint).not.toBeNull();
+    expect(interaction.rays).toHaveLength(sampleWavelengths().length);
+    expect(interaction.entryPoint).toEqual(interaction.rays[0].entryPoint);
+  });
+
+  it('reports no contact and no spectrum when white light misses the prism', () => {
+    const interaction = tracePrismInteraction(
+      { x: -1000, y: -1000 },
+      { x: 1, y: 0 },
+      TRIANGLE
+    );
+
+    expect(interaction).toEqual({ entryPoint: null, rays: [] });
+  });
+
   it('1. returns wavelengths in the same ascending order as sampleWavelengths()', () => {
     const rays = tracePrismSpectrum(INCOMING_ORIGIN, INCOMING_DIR, TRIANGLE);
     const expectedOrder = sampleWavelengths();

@@ -44,15 +44,26 @@ export interface WindowGeometry {
   timestamp: number;
 }
 
-/** Intensity-weighted average of the real exit rays (from PRISM's spectrum
- * trace) that actually land inside one receiver's window — see the
- * 'level-state' message below. */
+export interface SpectralBeamBand {
+  wavelengthNm: number;
+  originGlobal: Point;
+  directionGlobal: Point;
+  color: string;
+  /** Physical intensity after path attenuation, before receiver-specific
+   * sensitivity is applied. */
+  intensity: number;
+}
+
+/** Real exit rays (from PRISM's spectrum trace) that land inside one
+ * receiver's window. The average fields remain useful as a compact fallback;
+ * `bands` preserves the actual rainbow. */
 export interface ReceiverBeam {
   originGlobal: Point;
   directionGlobal: Point;
   /** css color string, e.g. "rgb(120,200,255)" — intensity-weighted blend
    * of the contributing wavelengths' true spectral colors. */
   color: string;
+  bands: SpectralBeamBand[];
 }
 
 export type BusMessage =
@@ -66,11 +77,9 @@ export type BusMessage =
    * it's the last device before EARTH/MARS and already has the dispersed
    * spectrum) whenever it recomputes. `apexGlobal` is where the spectrum
    * fan exits the prism, in global coordinates. `earthBeam`/`marsBeam` are
-   * the actual intensity-weighted origin/direction/color of whichever
-   * sampled wavelengths physically land in that receiver's window — `null`
-   * when none do — so EARTH/MARS can draw their incoming beam along the
-   * REAL exit angle (matching PRISM's own physics) and tinted with the
-   * real spectral color, instead of an approximated line back to apex. */
+   * the actual per-wavelength rays that physically land in that receiver's
+   * window — `null` when none do — so EARTH/MARS can continue the exact
+   * rainbow geometry and colors emitted by PRISM. */
   | {
       type: 'level-state';
       earthPercent: number;

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - worktree-agent-a7e9129dbc4b2cb40
   workflow_dispatch:
 
 permissions:
