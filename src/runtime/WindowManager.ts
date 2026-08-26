@@ -18,7 +18,7 @@ const DEVICE_LABELS: Record<DeviceId, string> = {
 function urlFor(id: DeviceId, sessionId: string, levelId: string | undefined): string {
   const params = new URLSearchParams({ session: sessionId });
   if (levelId) params.set('level', levelId);
-  return `/${id}.html?${params.toString()}`;
+  return `${import.meta.env.BASE_URL}${id}.html?${params.toString()}`;
 }
 
 function featuresString(rect: { left: number; top: number; width: number; height: number }): string {

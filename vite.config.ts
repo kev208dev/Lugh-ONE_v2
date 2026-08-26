@@ -6,6 +6,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   root: '.',
+  // GitHub project Pages serves the app below /Lugh-ONE_v2/. Keep the
+  // existing root URL during local development and local production builds.
+  base: process.env.VITE_BASE_PATH ?? '/',
   build: {
     rollupOptions: {
       input: {
