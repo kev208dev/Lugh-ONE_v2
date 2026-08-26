@@ -1,4 +1,4 @@
-import type { ReceiverBeam, WindowGeometry } from '../runtime/types';
+import type { ReceiverBeam, SpectralBeamBand, WindowGeometry } from '../runtime/types';
 import { createMessageBus } from '../runtime/MessageBus';
 import { bootstrapDevicePage } from './deviceBootstrap';
 import { LightRenderer } from '../rendering/LightRenderer';
@@ -6,7 +6,7 @@ import { windowRectGlobal, globalToLocal, localToGlobal } from '../runtime/globa
 import { clipSegmentToRect, segmentIntersectsCircle, type Point } from '../optics/Ray';
 import { computeWorkArea } from '../runtime/screenLayout';
 import { PrismRenderer, computePrismVertices } from '../devices/Prism';
-import { tracePrismSpectrum, type SpectralRay } from '../optics/PrismPhysics';
+import { tracePrismInteraction, type SpectralRay } from '../optics/PrismPhysics';
 import { sampleWavelengths, wavelengthToRgb } from '../optics/Spectrum';
 import { SpectrumRenderer } from '../rendering/SpectrumRenderer';
 import { buildSpectrumFan } from '../rendering/spectrumGeometry';
@@ -113,6 +113,7 @@ function powerAtReceiver(rays: SpectralRay[], receiverId: ReceiverId, geometry: 
   let gSum = 0;
   let bSum = 0;
   let weightSum = 0;
+  const bands: SpectralBeamBand[] = [];
 
   for (const ray of rays) {
     const p1 = localToGlobal(ray.exitPoint, selfGeometry);
@@ -125,28 +126,39 @@ function powerAtReceiver(rays: SpectralRay[], receiverId: ReceiverId, geometry: 
     // window (not the full 1,000,000px test ray) — a zone the beam passes
     // through anywhere along that real path dims it.
     const attenuation = nebulaAttenuationFactor(p1, clipped[0]);
-    const weight = ray.intensity * attenuation * receiverResponse(receiverId, ray.wavelengthNm);
-    power += weight;
-    if (weight <= 0) continue;
+    const physicalIntensity = ray.intensity * attenuation;
+    if (physicalIntensity <= 0) continue;
 
-    originSumX += p1.x * weight;
-    originSumY += p1.y * weight;
-    dirSumX += ray.exitDirection.x * weight;
-    dirSumY += ray.exitDirection.y * weight;
     const { r, g, b } = wavelengthToRgb(ray.wavelengthNm);
-    rSum += r * weight;
-    gSum += g * weight;
-    bSum += b * weight;
-    weightSum += weight;
+    const color = `rgb(${r},${g},${b})`;
+    bands.push({
+      wavelengthNm: ray.wavelengthNm,
+      originGlobal: p1,
+      directionGlobal: ray.exitDirection,
+      color,
+      intensity: physicalIntensity
+    });
+
+    power += physicalIntensity * receiverResponse(receiverId, ray.wavelengthNm);
+
+    originSumX += p1.x * physicalIntensity;
+    originSumY += p1.y * physicalIntensity;
+    dirSumX += ray.exitDirection.x * physicalIntensity;
+    dirSumY += ray.exitDirection.y * physicalIntensity;
+    rSum += r * physicalIntensity;
+    gSum += g * physicalIntensity;
+    bSum += b * physicalIntensity;
+    weightSum += physicalIntensity;
   }
 
-  if (weightSum <= 0) return { power, beam: null };
+  if (weightSum <= 0 || bands.length === 0) return { power, beam: null };
 
   const dirLen = Math.hypot(dirSumX, dirSumY) || 1;
   const beam: ReceiverBeam = {
     originGlobal: { x: originSumX / weightSum, y: originSumY / weightSum },
     directionGlobal: { x: dirSumX / dirLen, y: dirSumY / dirLen },
-    color: `rgb(${Math.round(rSum / weightSum)},${Math.round(gSum / weightSum)},${Math.round(bSum / weightSum)})`
+    color: `rgb(${Math.round(rSum / weightSum)},${Math.round(gSum / weightSum)},${Math.round(bSum / weightSum)})`,
+    bands
   };
   return { power, beam };
 }
@@ -164,11 +176,12 @@ let sunGeometry: WindowGeometry | undefined;
 function recomputeFromSun(): void {
   if (upstreamId !== 'sun') return;
   incomingRay = selfGeometry && sunGeometry ? straightRayFromSun(sunGeometry, selfGeometry) : undefined;
-  render();
   runPhysicsAndReportTiming();
 }
 
-function render(): void {
+/** Draws white light only up to the first glass contact. If the ray misses
+ * the triangle, it remains an uninterrupted white pass-through. */
+function renderIncoming(entryPointLocal: Point | null): void {
   if (!selfGeometry || !incomingRay) {
     renderer.clear();
     return;
@@ -188,7 +201,7 @@ function render(): void {
   }
 
   const local1 = globalToLocal(clipped[0], selfGeometry);
-  const local2 = globalToLocal(clipped[1], selfGeometry);
+  const local2 = entryPointLocal ?? globalToLocal(clipped[1], selfGeometry);
   renderer.drawSegment(local1, local2);
 }
 
@@ -247,6 +260,7 @@ function runPhysicsAndReportTiming(): void {
 
   if (!selfGeometry || incomingRay === undefined) {
     physicsHud.textContent = `physics: waiting for ${upstreamId}…`;
+    renderer.clear();
     spectrumRenderer.clear();
     if (selfGeometry) broadcastLevelState(0, 0, windowRectGlobalCenter(selfGeometry), null, null);
     return;
@@ -254,6 +268,7 @@ function runPhysicsAndReportTiming(): void {
 
   if (incomingRay === null) {
     physicsHud.textContent = 'physics: no incoming light';
+    renderer.clear();
     spectrumRenderer.clear();
     broadcastLevelState(0, 0, windowRectGlobalCenter(selfGeometry), null, null);
     return;
@@ -266,13 +281,17 @@ function runPhysicsAndReportTiming(): void {
     const vertices = computePrismVertices(window.innerWidth, window.innerHeight, angleDeg);
 
     const t0 = performance.now();
-    const rays = tracePrismSpectrum(originLocal, dir, { vertices });
+    const trace = tracePrismInteraction(originLocal, dir, { vertices });
+    const rays = trace.rays;
     const elapsedMs = performance.now() - t0;
 
     const total = sampleWavelengths().length;
-    physicsHud.textContent = `physics: ${elapsedMs.toFixed(2)}ms  rays: ${rays.length}/${total}`;
+    physicsHud.textContent = trace.entryPoint
+      ? `physics: HIT · spectrum ${rays.length}/${total} · ${elapsedMs.toFixed(2)}ms`
+      : `physics: MISS · white light · ${elapsedMs.toFixed(2)}ms`;
 
-    spectrumRenderer.drawFan(buildSpectrumFan(rays));
+    renderIncoming(trace.entryPoint);
+    spectrumRenderer.drawFan(buildSpectrumFan(rays), rays);
 
     const earthResult = powerAtReceiver(rays, 'earth', receiverGeometry.earth);
     const marsResult = powerAtReceiver(rays, 'mars', receiverGeometry.mars);
@@ -287,6 +306,7 @@ function runPhysicsAndReportTiming(): void {
     broadcastLevelState(earthPercent, marsPercent, localToGlobal(apexLocal, selfGeometry), earthResult.beam, marsResult.beam);
   } catch (err) {
     physicsHud.textContent = `physics: ERROR — ${String(err)}`;
+    renderer.clear();
     spectrumRenderer.clear();
     console.error('[prism physics]', err);
     broadcastLevelState(0, 0, windowRectGlobalCenter(selfGeometry), null, null);
@@ -330,7 +350,6 @@ bootstrapDevicePage('prism', {
     if (upstreamId === 'sun') {
       recomputeFromSun();
     } else {
-      render();
       runPhysicsAndReportTiming();
     }
   }
@@ -349,7 +368,6 @@ bus.subscribe((msg) => {
   }
   if (upstreamId !== 'sun' && msg.type === 'ray-state' && msg.from === upstreamId) {
     incomingRay = msg.absorbed ? null : { originGlobal: msg.originGlobal, directionGlobal: msg.directionGlobal };
-    render();
     runPhysicsAndReportTiming();
   } else if (msg.type === 'geometry-update' && (msg.geometry.id === 'earth' || msg.geometry.id === 'mars')) {
     receiverGeometry[msg.geometry.id] = msg.geometry;

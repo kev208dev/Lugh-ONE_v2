@@ -1,5 +1,12 @@
 import type { Point } from '../optics/Ray';
 
+export interface ColoredBeamSegment {
+  start: Point;
+  end: Point;
+  color: string;
+  intensity?: number;
+}
+
 /**
  * Thin wrapper around a full-window <canvas> (see .ray-canvas in style.css)
  * that draws a single white line segment in the canvas's own local
@@ -78,6 +85,41 @@ export class LightRenderer {
     ctx.globalAlpha = 1;
     ctx.lineWidth = 1;
     ctx.stroke();
+  }
+
+  /** Draws the individual wavelength rays that make up dispersed light.
+   * The canvas is cleared once, then every band is composited additively so
+   * violet through red remain visibly distinct instead of being reduced to
+   * a single average RGB line. */
+  drawSpectralSegments(segments: ColoredBeamSegment[]): void {
+    const { ctx, canvas } = this;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (segments.length === 0) return;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+
+    for (const segment of segments) {
+      const intensity = Math.min(1, Math.max(0, segment.intensity ?? 1));
+      if (intensity <= 0) continue;
+
+      ctx.beginPath();
+      ctx.moveTo(segment.start.x, segment.start.y);
+      ctx.lineTo(segment.end.x, segment.end.y);
+      ctx.strokeStyle = segment.color;
+      ctx.globalAlpha = 0.08 + intensity * 0.1;
+      ctx.lineWidth = 8;
+      ctx.stroke();
+      ctx.globalAlpha = 0.18 + intensity * 0.22;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.globalAlpha = 0.5 + intensity * 0.5;
+      ctx.lineWidth = 1.15;
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
   clear(): void {
