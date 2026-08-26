@@ -1,4 +1,4 @@
-import { DEVICE_IDS, type DeviceId, type WindowGeometry } from '../runtime/types';
+import { DEVICE_IDS, type BusMessage, type DeviceId, type WindowGeometry } from '../runtime/types';
 import { GeometryTracker } from '../runtime/GeometryTracker';
 import { createMessageBus } from '../runtime/MessageBus';
 import { LightRenderer } from '../rendering/LightRenderer';
@@ -13,12 +13,22 @@ const sessionId = new URLSearchParams(location.search).get('session') ?? 'lugh-v
 const bus = createMessageBus(sessionId);
 const hud = document.getElementById('hud');
 const levelHud = document.getElementById('level-hud');
+const rayStateHud = document.getElementById('raystate-hud');
 
 const canvas = document.getElementById('ray-canvas') as HTMLCanvasElement;
 const renderer = new LightRenderer(canvas);
 
+// PHASE 6 (mirror/blackhole feature work): debug visualization of whichever
+// ray-bending device (MIRROR, BLACKHOLE) most recently broadcast its
+// outgoing ray — proves the global-coordinate cross-window handoff those
+// devices use is wired correctly, the same way renderRay() already proves
+// it for the SUN->PRISM segment.
+const rayStateCanvas = document.getElementById('raystate-canvas') as HTMLCanvasElement;
+const rayStateRenderer = new LightRenderer(rayStateCanvas);
+
 const latest: Partial<Record<DeviceId, WindowGeometry>> = {};
 let latestPrismAngleDeg = 0;
+let latestRayState: Extract<BusMessage, { type: 'ray-state' }> | undefined;
 const levelTracker = new LevelTracker();
 
 function renderHud() {
@@ -116,9 +126,44 @@ function renderReceivers(): void {
   }
 }
 
+/**
+ * Debug visualization for the mirror/blackhole feature: draws whichever
+ * device's most recent 'ray-state' broadcast, clipped to WORLD's own rect —
+ * same clip-and-draw technique as renderRay(). Absorbed rays (a black hole
+ * event horizon) simply have nothing to draw beyond the point they ended.
+ */
+function renderRayState() {
+  const selfGeometry = latest.world;
+  const state = latestRayState;
+
+  if (rayStateHud) {
+    rayStateHud.textContent = state
+      ? `ray-state: from=${state.from} absorbed=${state.absorbed}`
+      : 'ray-state: —';
+  }
+
+  if (!selfGeometry || !state || state.absorbed) {
+    rayStateRenderer.clear();
+    return;
+  }
+
+  const p1 = state.originGlobal;
+  const p2 = { x: p1.x + state.directionGlobal.x * 1_000_000, y: p1.y + state.directionGlobal.y * 1_000_000 };
+  const myRect = windowRectGlobal(selfGeometry);
+  const clipped = clipSegmentToRect(p1, p2, myRect);
+
+  if (!clipped) {
+    rayStateRenderer.clear();
+    return;
+  }
+
+  rayStateRenderer.drawSegment(globalToLocal(clipped[0], selfGeometry), globalToLocal(clipped[1], selfGeometry));
+}
+
 function render() {
   renderHud();
   renderRay();
+  renderRayState();
 }
 
 bus.subscribe((msg) => {
@@ -129,6 +174,9 @@ bus.subscribe((msg) => {
   } else if (msg.type === 'prism-rotation') {
     latestPrismAngleDeg = msg.angleDeg;
     renderReceivers();
+  } else if (msg.type === 'ray-state') {
+    latestRayState = msg;
+    renderRayState();
   }
 });
 

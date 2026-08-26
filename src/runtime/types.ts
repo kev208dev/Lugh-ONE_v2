@@ -2,9 +2,11 @@
 // GeometryTracker/MessageBus (runtime/geometry+bus) implement against this
 // file. Do not change shapes here without updating both sides.
 
-export type DeviceId = 'world' | 'sun' | 'prism' | 'earth' | 'mars';
+import type { Point } from '../optics/Ray';
 
-export const DEVICE_IDS: DeviceId[] = ['world', 'sun', 'prism', 'earth', 'mars'];
+export type DeviceId = 'world' | 'sun' | 'prism' | 'earth' | 'mars' | 'mirror' | 'blackhole';
+
+export const DEVICE_IDS: DeviceId[] = ['world', 'sun', 'mirror', 'blackhole', 'prism', 'earth', 'mars'];
 
 /** Stable per-device popup name (also the BroadcastChannel scoping key input). */
 export function popupNameFor(id: DeviceId): string {
@@ -51,7 +53,18 @@ export type BusMessage =
   | { type: 'prism-rotation'; angleDeg: number; timestamp: number }
   /** Broadcast by WORLD (the authoritative receiver-power/level calculator)
    * whenever it recomputes, driven by the same geometry/rotation events. */
-  | { type: 'level-state'; earthPercent: number; marsPercent: number; complete: boolean };
+  | { type: 'level-state'; earthPercent: number; marsPercent: number; complete: boolean }
+  /** Coalesced MIRROR rotation — mirrors prism-rotation's throttling contract
+   * exactly (max ~20-30Hz while actively rotating, plus one immediate send
+   * the moment interaction ends). */
+  | { type: 'mirror-rotation'; angleDeg: number; timestamp: number }
+  /** Broadcast by a ray-bending device (MIRROR, BLACKHOLE) once it has
+   * computed its outgoing ray, in GLOBAL screen coordinates, so any other
+   * window can render the continuation by clipping this same segment
+   * against its own rect (the same technique the SUN->PRISM ray already
+   * uses). `absorbed: true` means the ray terminated at this device (e.g. a
+   * black hole's event horizon) and there is no continuation to draw. */
+  | { type: 'ray-state'; from: DeviceId; originGlobal: Point; directionGlobal: Point; absorbed: boolean };
 
 export interface MessageBus {
   send(msg: BusMessage): void;

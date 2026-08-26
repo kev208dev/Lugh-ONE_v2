@@ -103,12 +103,12 @@ async function runLaunchFlow(): Promise<void> {
     return;
   }
 
-  setStatus('창을 여는 중... (WORLD, SUN, PRISM, EARTH, MARS)');
+  setStatus('창을 여는 중... (WORLD, SUN, MIRROR, BLACKHOLE, PRISM, EARTH, MARS)');
 
   const result = await manager.launchAll(sessionId);
 
   if (result.ok) {
-    setStatus('5개 창 실행됨 — WORLD, SUN, PRISM, EARTH, MARS');
+    setStatus('7개 창 실행됨 — WORLD, SUN, MIRROR, BLACKHOLE, PRISM, EARTH, MARS');
     startBtn.disabled = false;
     startBtn.textContent = 'RESTART';
   } else {
