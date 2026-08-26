@@ -70,6 +70,24 @@ describe('launcher shell', () => {
     expect(doc.querySelector('script[src="/src/launcher/main.ts"]')).not.toBeNull();
   });
 
+  it('ships an accessible first-run tutorial that can be reopened from the launcher', () => {
+    const doc = new DOMParser().parseFromString(launcherHtml, 'text/html');
+    const tutorialButton = doc.querySelector<HTMLButtonElement>('#tutorial-btn');
+    const onboarding = doc.querySelector<HTMLElement>('#onboarding');
+
+    expect(tutorialButton?.type).toBe('button');
+    expect(tutorialButton?.textContent).toContain('튜토리얼 보기');
+    expect(onboarding?.hidden).toBe(true);
+    expect(onboarding?.querySelector('[role="dialog"]')?.getAttribute('aria-modal')).toBe('true');
+    expect(onboarding?.querySelector('#onboarding-progress')?.getAttribute('aria-valuemax')).toBe('5');
+    expect(onboarding?.querySelector('#onboarding-prev')).not.toBeNull();
+    expect(onboarding?.querySelector('#onboarding-next')).not.toBeNull();
+    expect(onboarding?.querySelector('.tutorial-sun')).not.toBeNull();
+    expect(onboarding?.querySelector('.tutorial-prism')).not.toBeNull();
+    expect(onboarding?.querySelector('.tutorial-earth')).not.toBeNull();
+    expect(onboarding?.querySelector('.tutorial-mars')).not.toBeNull();
+  });
+
   it('keeps generic overlay stacking rules from pulling launcher layers into normal flow', () => {
     const doc = new DOMParser().parseFromString(launcherHtml, 'text/html');
     const rules = parseRules(appCss);
@@ -101,5 +119,15 @@ describe('launcher shell', () => {
     expect(declarationFor(rules, '.launcher-grain', 'position')).toBe('fixed');
     expect(declarationFor(rules, '.launcher-vignette', 'position')).toBe('fixed');
     expect(declarationFor(rules, '.launcher-content', 'z-index')).toBe('3');
+  });
+
+  it('keeps launcher copy readable and the footer out of the viewport overlay stack', () => {
+    const rules = parseRules(appCss);
+
+    expect(declarationFor(rules, '.launcher-footer', 'position')).toBe('relative');
+    expect(Number(declarationFor(rules, '.launcher-title', 'line-height'))).toBeGreaterThanOrEqual(0.9);
+    expect(declarationFor(rules, '.launcher-actions', 'flex-direction')).toBe('column');
+    expect(declarationFor(rules, '.onboarding[hidden]', 'display')).toBe('none');
+    expect(appCss).toContain('@media (max-width: 1100px)');
   });
 });
