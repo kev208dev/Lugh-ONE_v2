@@ -1,6 +1,12 @@
 import { WindowManager } from '../runtime/WindowManager';
 import { requestWindowManagementPermissionInBackground } from '../runtime/screenLayout';
 import { LauncherBackgroundDemo } from './backgroundDemo';
+import { LEVELS } from '../level/levels';
+import { loadProgress, markSolved } from '../level/progression';
+import { createMessageBus } from '../runtime/MessageBus';
+import { ExperimentAudio } from '../audio/ExperimentAudio';
+import { SolvedBanner } from '../rendering/SolvedBanner';
+import type { PuzzleState } from '../level/types';
 
 // Decorative only — never allowed to block or fail the real launch flow, so
 // it's wired up independently of the critical-element guard below.
@@ -34,6 +40,19 @@ const retryBtn: HTMLButtonElement = retryBtnQ;
 const sessionId = crypto.randomUUID();
 
 const manager = new WindowManager();
+const bus = createMessageBus(sessionId);
+const solvedBanner = new SolvedBanner(document.body);
+const savedProgress = loadProgress();
+const firstUnsolved = LEVELS.findIndex((level) => !savedProgress.solvedLevelIds.includes(level.id));
+let activeLevelIndex = firstUnsolved >= 0 ? firstUnsolved : LEVELS.length - 1;
+let lastPuzzleState: PuzzleState = 'PLAYING';
+let solvedBannerTimer: ReturnType<typeof setTimeout> | undefined;
+let audio: ExperimentAudio | undefined;
+
+function experimentAudio(): ExperimentAudio {
+  audio ??= new ExperimentAudio();
+  return audio;
+}
 
 function setStatus(text: string): void {
   statusEl.textContent = text;
@@ -79,6 +98,11 @@ function testPopupCapability(): boolean {
 
 async function runLaunchFlow(): Promise<void> {
   hideError();
+  solvedBanner.hide();
+  if (solvedBannerTimer !== undefined) clearTimeout(solvedBannerTimer);
+  solvedBannerTimer = undefined;
+  audio?.stabilizingStop();
+  lastPuzzleState = 'PLAYING';
   // Defensive: a retry must never accumulate windows even if a previous
   // partial state somehow survived.
   manager.closeAll();
@@ -111,10 +135,11 @@ async function runLaunchFlow(): Promise<void> {
 
   setStatus('OPENING INSTRUMENTS...');
 
-  const result = await manager.launchAll(sessionId);
+  const level = LEVELS[activeLevelIndex];
+  const result = await manager.launchAll(sessionId, level);
 
   if (result.ok) {
-    setStatus('EXPERIMENT READY');
+    setStatus(`${String(level.index + 1).padStart(2, '0')} · ${level.name.toUpperCase()} — EXPERIMENT READY`);
     startBtn.disabled = false;
     startBtn.textContent = 'RESTART EXPERIMENT';
   } else {
@@ -125,9 +150,46 @@ async function runLaunchFlow(): Promise<void> {
 }
 
 startBtn.addEventListener('click', () => {
+  experimentAudio().hover();
   void runLaunchFlow();
 });
 
 retryBtn.addEventListener('click', () => {
+  experimentAudio().hover();
   void runLaunchFlow();
+});
+
+bus.subscribe((msg) => {
+  if (msg.type !== 'puzzle-state' || msg.state === lastPuzzleState) return;
+
+  if (msg.state === 'STABILIZING') {
+    audio?.stabilizingStart();
+  } else if (lastPuzzleState === 'STABILIZING') {
+    audio?.stabilizingStop();
+  }
+
+  if (msg.state === 'SOLVED') {
+    const level = LEVELS[activeLevelIndex];
+    markSolved(level.id, level.index);
+    audio?.solved();
+    solvedBanner.showStable();
+    setStatus('EXPERIMENT STABLE');
+    solvedBannerTimer = setTimeout(() => {
+      solvedBanner.showSolved(
+        level.index + 1,
+        level.name,
+        () => {
+          experimentAudio().hover();
+          activeLevelIndex = (activeLevelIndex + 1) % LEVELS.length;
+          void runLaunchFlow();
+        },
+        () => {
+          experimentAudio().hover();
+          void runLaunchFlow();
+        }
+      );
+    }, 1700);
+  }
+
+  lastPuzzleState = msg.state;
 });

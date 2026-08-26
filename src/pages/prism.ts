@@ -15,6 +15,8 @@ import { LevelTracker } from '../level/level01';
 import { straightRayFromSun } from '../optics/upstream';
 import { currentLevel } from '../level/session';
 import { resolveUpstream } from '../level/types';
+import { evaluateGoal } from '../puzzle/GoalEvaluator';
+import { PuzzleStateMachine } from '../puzzle/PuzzleStateMachine';
 
 // See src/pages/blackhole.ts's identical comment: a level that skips
 // straight from SUN (no MIRROR or BLACKHOLE) routes PRISM directly to SUN's
@@ -86,6 +88,8 @@ let angleDeg = 0;
 // broadcast geometry, same as every device already does for itself.
 const receiverGeometry: Partial<Record<'earth' | 'mars', WindowGeometry>> = {};
 const levelTracker = new LevelTracker();
+const puzzleStateMachine = level ? new PuzzleStateMachine(level.goal.holdDurationMs) : null;
+let stabilizationTimer: ReturnType<typeof setTimeout> | undefined;
 
 const RAY_TEST_DISTANCE = 1_000_000;
 
@@ -203,6 +207,37 @@ function broadcastLevelState(
   earthBeam: ReceiverBeam | null,
   marsBeam: ReceiverBeam | null
 ): void {
+  if (level && puzzleStateMachine) {
+    const evaluation = evaluateGoal(level.goal, { earth: earthPercent, mars: marsPercent });
+    const tick = puzzleStateMachine.update(evaluation.satisfied, performance.now());
+    bus.send({
+      type: 'level-state',
+      earthPercent,
+      marsPercent,
+      complete: tick.state === 'SOLVED',
+      apexGlobal,
+      earthBeam,
+      marsBeam
+    });
+    bus.send({
+      type: 'puzzle-state',
+      state: tick.state,
+      holdProgress: tick.holdProgress,
+      satisfied: evaluation.satisfied,
+      perReceiver: evaluation.perReceiver.map(({ receiverId, currentPower, pass }) => ({ receiverId, currentPower, pass }))
+    });
+
+    // Geometry can be perfectly still while the goal is satisfied. Keep the
+    // state machine ticking until the continuous hold reaches SOLVED.
+    if (tick.state === 'STABILIZING' && stabilizationTimer === undefined) {
+      stabilizationTimer = setTimeout(() => {
+        stabilizationTimer = undefined;
+        runPhysicsAndReportTiming();
+      }, 50);
+    }
+    return;
+  }
+
   const state = levelTracker.update(earthPercent, marsPercent, performance.now());
   bus.send({ type: 'level-state', earthPercent, marsPercent, complete: state.complete, apexGlobal, earthBeam, marsBeam });
 }
@@ -302,6 +337,11 @@ bootstrapDevicePage('prism', {
 });
 
 bus.subscribe((msg) => {
+  if (msg.type === 'reset-level' && puzzleStateMachine) {
+    puzzleStateMachine.reset();
+    runPhysicsAndReportTiming();
+    return;
+  }
   if (upstreamId === 'sun' && msg.type === 'geometry-update' && msg.geometry.id === 'sun') {
     sunGeometry = msg.geometry;
     recomputeFromSun();

@@ -4,6 +4,8 @@ import { ReceiverPlanetRenderer } from '../devices/ReceiverPlanet';
 import { LightRenderer } from '../rendering/LightRenderer';
 import { windowRectGlobal, globalToLocal } from '../runtime/globalCoords';
 import { clipSegmentToRect } from '../optics/Ray';
+import { currentLevel } from '../level/session';
+import type { PuzzleState } from '../level/types';
 
 /** How far past this window the incoming beam's test segment reaches, in
  * global pixels — just needs to be larger than any plausible screen diagonal. */
@@ -14,6 +16,25 @@ const rayRenderer = new LightRenderer(rayCanvas); // incoming beam from PRISM
 
 const planetCanvas = document.getElementById('planet-canvas') as HTMLCanvasElement;
 const planetRenderer = new ReceiverPlanetRenderer(planetCanvas, 'earth');
+const level = currentLevel();
+const goalMinPower = level?.goal.receivers.find((requirement) => requirement.receiverId === 'earth')?.minPower ?? 100;
+let percent = 0;
+let puzzleState: PuzzleState = 'PLAYING';
+let stabilizeProgress = 0;
+let solvedAtMs: number | undefined;
+let animationFrame: number | undefined;
+
+function drawPlanet(): void {
+  planetRenderer.draw({ percent, goalMinPower, puzzleState, stabilizeProgress, solvedAtMs }, performance.now());
+  if (animationFrame === undefined && (puzzleState === 'STABILIZING' || (solvedAtMs !== undefined && performance.now() - solvedAtMs < 900))) {
+    animationFrame = requestAnimationFrame(() => {
+      animationFrame = undefined;
+      drawPlanet();
+    });
+  }
+}
+
+drawPlanet();
 
 let selfGeometry: WindowGeometry | undefined;
 /** Screen position this window was launched at — EARTH/MARS are meant to be
@@ -38,9 +59,10 @@ const bannerEl = document.getElementById('level-banner');
 
 bus.subscribe((msg) => {
   if (msg.type === 'level-state') {
+    percent = msg.earthPercent;
     if (powerEl) powerEl.textContent = `${Math.round(msg.earthPercent)}%`;
     if (bannerEl) bannerEl.classList.toggle('visible', msg.complete);
-    planetRenderer.draw(msg.earthPercent, msg.complete);
+    drawPlanet();
 
     if (selfGeometry && msg.earthBeam) {
       const { originGlobal, directionGlobal, color } = msg.earthBeam;
@@ -56,5 +78,11 @@ bus.subscribe((msg) => {
     } else {
       rayRenderer.clear();
     }
+  } else if (msg.type === 'puzzle-state') {
+    const wasSolved = puzzleState === 'SOLVED';
+    puzzleState = msg.state;
+    stabilizeProgress = msg.holdProgress;
+    if (!wasSolved && puzzleState === 'SOLVED') solvedAtMs = performance.now();
+    drawPlanet();
   }
 });
