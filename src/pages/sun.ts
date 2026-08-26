@@ -4,27 +4,34 @@ import { SunRenderer } from '../devices/Sun';
 import { LightRenderer } from '../rendering/LightRenderer';
 import { centerGlobal, windowRectGlobal, globalToLocal } from '../runtime/globalCoords';
 import { clipSegmentToRect } from '../optics/Ray';
+import { currentLevel } from '../level/session';
+import { CANON_CHAIN_ORDER, devicesForLevel } from '../level/types';
+import type { DeviceId } from '../runtime/types';
 
 const sunCanvas = document.getElementById('sun-canvas') as HTMLCanvasElement;
 new SunRenderer(sunCanvas);
 
-// SUN is the start of the chain (SUN -> MIRROR -> BLACKHOLE -> PRISM ->
-// EARTH/MARS): every downstream device draws its own outgoing beam within
-// its own window, so SUN needs to do the same for the leg heading to
-// MIRROR, or the chain visually starts from nowhere.
+// SUN is the start of the chain. Levels omit instruments, so its immediate
+// downstream target may be MIRROR, BLACKHOLE, or PRISM. Opening sun.html
+// outside the guided level flow preserves the original MIRROR fallback.
+const level = currentLevel();
+const activeDevices = level ? new Set(devicesForLevel(level)) : null;
+const downstreamId: DeviceId =
+  CANON_CHAIN_ORDER.slice(1).find((id) => activeDevices?.has(id)) ?? 'mirror';
+
 const rayCanvas = document.getElementById('ray-canvas') as HTMLCanvasElement;
 const rayRenderer = new LightRenderer(rayCanvas);
 
 let selfGeometry: WindowGeometry | undefined;
-let mirrorGeometry: WindowGeometry | undefined;
+let downstreamGeometry: WindowGeometry | undefined;
 
 function renderOutgoing(): void {
-  if (!selfGeometry || !mirrorGeometry) {
+  if (!selfGeometry || !downstreamGeometry) {
     rayRenderer.clear();
     return;
   }
   const p1 = centerGlobal(selfGeometry);
-  const p2 = centerGlobal(mirrorGeometry);
+  const p2 = centerGlobal(downstreamGeometry);
   const myRect = windowRectGlobal(selfGeometry);
   const clipped = clipSegmentToRect(p1, p2, myRect);
   if (!clipped) {
@@ -42,8 +49,8 @@ const { bus } = bootstrapDevicePage('sun', {
 });
 
 bus.subscribe((msg) => {
-  if (msg.type === 'geometry-update' && msg.geometry.id === 'mirror') {
-    mirrorGeometry = msg.geometry;
+  if (msg.type === 'geometry-update' && msg.geometry.id === downstreamId) {
+    downstreamGeometry = msg.geometry;
     renderOutgoing();
   }
 });

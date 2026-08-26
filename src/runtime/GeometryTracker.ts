@@ -76,6 +76,16 @@ export class GeometryTracker {
     this.onUpdate = onUpdate;
   }
 
+  /**
+   * Returns a fresh geometry sample without changing the tracker's polling
+   * state. Device pages use this to answer a newly-opened peer's `hello`
+   * message, so a peer that missed this window's one-time startup broadcast
+   * can still bootstrap immediately.
+   */
+  snapshot(): WindowGeometry {
+    return toGeometry(this.id, this.win, sample(this.win));
+  }
+
   start(): void {
     this.stop();
 

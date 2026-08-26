@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/guided-chain
-      - worktree-agent-a7e9129dbc4b2cb40
   workflow_dispatch:
 
 permissions:
@@ -14,7 +12,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: pages
   cancel-in-progress: true
 
 jobs:
