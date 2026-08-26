@@ -13,6 +13,8 @@ export const DEVICE_LAYOUTS: DeviceLayout[] = [
   // HUD text can overflow a 200px-tall popup and get clipped by body's
   // overflow:hidden — the physics-hud line (bottom-most) disappears first.
   { id: 'sun', xPct: 0.15, yPct: 0.5, width: 260, height: 260 },
+  { id: 'mirror', xPct: 0.32, yPct: 0.25, width: 260, height: 260 },
+  { id: 'blackhole', xPct: 0.32, yPct: 0.75, width: 260, height: 260 },
   { id: 'prism', xPct: 0.5, yPct: 0.5, width: 260, height: 260 },
   { id: 'mars', xPct: 0.8, yPct: 0.35, width: 260, height: 260 },
   { id: 'earth', xPct: 0.8, yPct: 0.68, width: 260, height: 260 }

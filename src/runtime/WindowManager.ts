@@ -10,7 +10,9 @@ const DEVICE_LABELS: Record<DeviceId, string> = {
   sun: 'SUN',
   prism: 'PRISM',
   earth: 'EARTH',
-  mars: 'MARS'
+  mars: 'MARS',
+  mirror: 'MIRROR',
+  blackhole: 'BLACKHOLE'
 };
 
 function urlFor(id: DeviceId, sessionId: string): string {

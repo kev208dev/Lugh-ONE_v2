@@ -12,6 +12,8 @@ export default defineConfig({
         launcher: resolve(__dirname, 'index.html'),
         world: resolve(__dirname, 'world.html'),
         sun: resolve(__dirname, 'sun.html'),
+        mirror: resolve(__dirname, 'mirror.html'),
+        blackhole: resolve(__dirname, 'blackhole.html'),
         prism: resolve(__dirname, 'prism.html'),
         earth: resolve(__dirname, 'earth.html'),
         mars: resolve(__dirname, 'mars.html')
