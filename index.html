@@ -26,9 +26,14 @@
       <p class="launcher-intro">Turn browser windows into optical instruments. Move them across your desktop to reflect, bend, split, and balance a living beam of light.</p>
 
       <div class="launcher-actions">
-        <button id="start-btn" class="launcher-begin-btn" type="button">
-          <span>BEGIN EXPERIMENT</span><b aria-hidden="true">&rarr;</b>
-        </button>
+        <div class="launcher-action-buttons">
+          <button id="start-btn" class="launcher-begin-btn" type="button">
+            <span>BEGIN EXPERIMENT</span><b aria-hidden="true">&rarr;</b>
+          </button>
+          <button id="tutorial-btn" class="launcher-tutorial-btn" type="button">
+            <span aria-hidden="true">?</span> 튜토리얼 보기
+          </button>
+        </div>
         <div id="status" class="launcher-status" role="status" aria-live="polite"></div>
       </div>
 
@@ -82,6 +87,66 @@
     <span>LIGHT LAB / BUILD 02</span>
     <span>YOUR PROGRESS SAVES AUTOMATICALLY</span>
   </footer>
+
+  <div id="onboarding" class="onboarding" hidden>
+    <div class="onboarding-backdrop" aria-hidden="true"></div>
+    <section
+      class="onboarding-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-title"
+      aria-describedby="onboarding-description"
+    >
+      <header class="onboarding-header">
+        <div>
+          <span class="onboarding-brand">LUGH:ONE / FIELD GUIDE</span>
+          <span id="onboarding-step-label" class="onboarding-step-label"></span>
+        </div>
+        <button id="onboarding-skip" class="onboarding-skip" type="button">건너뛰기</button>
+      </header>
+
+      <div
+        id="onboarding-progress"
+        class="onboarding-progress"
+        role="progressbar"
+        aria-label="튜토리얼 진행률"
+        aria-valuemin="1"
+        aria-valuemax="5"
+      ></div>
+
+      <div class="onboarding-body">
+        <div id="onboarding-visual" class="onboarding-visual" data-step="0" aria-hidden="true">
+          <div class="tutorial-desktop-label">YOUR DESKTOP = THE PUZZLE BOARD</div>
+          <div class="tutorial-chain">
+            <div class="tutorial-device tutorial-sun"><strong>SUN</strong><small>WHITE LIGHT</small></div>
+            <span class="tutorial-link tutorial-link-white"></span>
+            <div class="tutorial-device tutorial-mirror"><strong>MIRROR</strong><small>REDIRECT</small></div>
+            <span class="tutorial-link tutorial-link-white"></span>
+            <div class="tutorial-device tutorial-prism"><strong>PRISM</strong><small>TOUCH + SPLIT</small></div>
+            <span class="tutorial-link tutorial-link-rainbow"></span>
+            <div class="tutorial-receivers">
+              <div class="tutorial-device tutorial-earth"><strong>EARTH</strong><small>COOL COLORS</small></div>
+              <div class="tutorial-device tutorial-mars"><strong>MARS</strong><small>WARM COLORS</small></div>
+            </div>
+          </div>
+          <div class="tutorial-gesture"><span>↔</span> MOVE WINDOWS TO STEER LIGHT</div>
+        </div>
+
+        <div class="onboarding-copy">
+          <p id="onboarding-eyebrow" class="onboarding-eyebrow"></p>
+          <h2 id="onboarding-title"></h2>
+          <p id="onboarding-description" class="onboarding-description"></p>
+          <p id="onboarding-lesson" class="onboarding-lesson"></p>
+        </div>
+      </div>
+
+      <footer class="onboarding-footer">
+        <button id="onboarding-prev" class="onboarding-prev" type="button">이전</button>
+        <span class="onboarding-key-hint">ESC로 닫기</span>
+        <button id="onboarding-next" class="onboarding-next" type="button">다음 <span aria-hidden="true">→</span></button>
+      </footer>
+    </section>
+  </div>
 
   <script type="module" src="/src/launcher/main.ts"></script>
 </body>

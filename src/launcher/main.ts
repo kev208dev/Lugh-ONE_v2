@@ -7,6 +7,7 @@ import { createMessageBus } from '../runtime/MessageBus';
 import { ExperimentAudio } from '../audio/ExperimentAudio';
 import { SolvedBanner } from '../rendering/SolvedBanner';
 import { devicesForLevel, type PuzzleState } from '../level/types';
+import { createOnboarding } from './onboarding';
 
 // Decorative only — never allowed to block or fail the real launch flow, so
 // it's wired up independently of the critical-element guard below.
@@ -29,6 +30,8 @@ const activeLevelDescriptionQ = document.querySelector<HTMLParagraphElement>('#a
 const deviceListQ = document.querySelector<HTMLDivElement>('#device-list');
 const goalSummaryQ = document.querySelector<HTMLParagraphElement>('#goal-summary');
 const levelNavQ = document.querySelector<HTMLElement>('#level-nav');
+const tutorialBtnQ = document.querySelector<HTMLButtonElement>('#tutorial-btn');
+const onboardingRootQ = document.querySelector<HTMLElement>('#onboarding');
 
 if (
   !startBtnQ ||
@@ -44,7 +47,9 @@ if (
   !activeLevelDescriptionQ ||
   !deviceListQ ||
   !goalSummaryQ ||
-  !levelNavQ
+  !levelNavQ ||
+  !tutorialBtnQ ||
+  !onboardingRootQ
 ) {
   throw new Error('launcher: expected DOM elements missing from index.html');
 }
@@ -67,6 +72,8 @@ const activeLevelDescription: HTMLParagraphElement = activeLevelDescriptionQ;
 const deviceList: HTMLDivElement = deviceListQ;
 const goalSummary: HTMLParagraphElement = goalSummaryQ;
 const levelNav: HTMLElement = levelNavQ;
+const tutorialBtn: HTMLButtonElement = tutorialBtnQ;
+const onboardingRoot: HTMLElement = onboardingRootQ;
 
 // One sessionId per page load, reused across retries within this load so
 // popup names / future BroadcastChannel scoping stay stable across retries.
@@ -263,6 +270,26 @@ retryBtn.addEventListener('click', () => {
   void runLaunchFlow();
 });
 
+let onboardingStorage: Storage | undefined;
+try {
+  onboardingStorage = window.localStorage;
+} catch {
+  // The tutorial still works when storage access is restricted.
+}
+
+const onboarding = createOnboarding(onboardingRoot, {
+  storage: onboardingStorage,
+  onComplete: () => {
+    experimentAudio().hover();
+    void runLaunchFlow();
+  }
+});
+
+tutorialBtn.addEventListener('click', () => {
+  experimentAudio().hover();
+  onboarding.open();
+});
+
 bus.subscribe((msg) => {
   if (msg.type !== 'puzzle-state' || msg.state === lastPuzzleState) return;
 
@@ -301,3 +328,7 @@ bus.subscribe((msg) => {
 });
 
 renderLevelOverview();
+
+if (onboarding.shouldOpenAutomatically()) {
+  onboarding.open();
+}
