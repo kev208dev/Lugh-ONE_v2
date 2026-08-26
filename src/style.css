@@ -55,57 +55,12 @@ body > :not(.overlay-canvas) {
   z-index: 1;
 }
 
-h1 {
-  letter-spacing: 0.3em;
-  font-weight: 300;
-  margin: 0;
-}
-
-.subtitle {
-  opacity: 0.6;
-  font-size: 0.85rem;
-  letter-spacing: 0.15em;
-}
-
-button {
-  background: var(--accent);
-  color: #0a0d14;
-  border: none;
-  padding: 0.75rem 2.5rem;
-  font-size: 1rem;
-  letter-spacing: 0.2em;
-  cursor: pointer;
-  border-radius: 2px;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-button:hover:not(:disabled) {
-  filter: brightness(1.1);
-}
-
-#status {
-  font-size: 0.8rem;
-  opacity: 0.7;
-  min-height: 1.2em;
-  white-space: pre-line;
-}
-
-#error-panel {
-  display: none;
-  border: 1px solid var(--err);
-  color: var(--err);
-  padding: 0.75rem 1rem;
-  font-size: 0.8rem;
-  max-width: 28rem;
-}
-
-#error-panel.visible {
-  display: block;
-}
+/* h1/.subtitle/button/#status/#error-panel were the old generic launcher
+ * styles — superseded below by the .launcher-* rules, which are all that
+ * index.html's elements carry now (they were launcher-exclusive selectors,
+ * confirmed unused by any device page, so no risk removing them here rather
+ * than leaving a higher-specificity id rule to silently fight the new
+ * class-based one). */
 
 .device-label {
   font-size: 1.4rem;
@@ -146,4 +101,321 @@ button:hover:not(:disabled) {
 
 .level-banner.visible {
   display: inline-block;
+}
+
+/* ---------------------------------------------------------------------
+ * Launcher / start screen — scoped entirely under body.launcher-page so
+ * none of this leaks onto the device popup pages (body.device-page above),
+ * which keep their own centered-flex-column-free, top-left-stacked layout.
+ * --------------------------------------------------------------------- */
+
+body.launcher-page {
+  display: block;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #11151f 0%, #0a0d14 55%, #05060a 100%);
+}
+
+.launcher-bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* Very faint animated-free grain: a tiny tiled SVG turbulence noise, alpha
+ * only, so it reads as texture rather than a visible repeating tile. */
+.launcher-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 120px 120px;
+}
+
+.launcher-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.launcher-content {
+  position: relative;
+  z-index: 3;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.launcher-title {
+  margin: 0;
+  font-weight: 200;
+  font-size: clamp(2.6rem, 8vw, 4.5rem);
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  color: #f2f5fb;
+  text-shadow: 0 0 40px rgba(160, 190, 255, 0.18);
+}
+
+.launcher-title-colon {
+  opacity: 0.55;
+  font-weight: 300;
+}
+
+.launcher-tagline {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  line-height: 1.7;
+  opacity: 0.55;
+}
+
+.launcher-begin-btn {
+  margin-top: 0.6rem;
+  background: transparent;
+  border: 1px solid rgba(127, 184, 255, 0.55);
+  color: var(--fg);
+  padding: 0.9rem 3rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+/* Hover = light gathering slightly, not a glow blast. */
+.launcher-begin-btn:hover:not(:disabled) {
+  filter: none;
+  border-color: rgba(190, 220, 255, 0.9);
+  background: rgba(127, 184, 255, 0.06);
+  box-shadow: 0 0 22px rgba(127, 184, 255, 0.16);
+}
+
+.launcher-begin-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.launcher-status {
+  min-height: 1.1em;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  opacity: 0.6;
+}
+
+.launcher-system-status {
+  margin: 0.2rem 0 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  opacity: 0.35;
+}
+
+.launcher-access-panel {
+  display: none;
+  position: relative;
+  z-index: 3;
+  margin: 1.25rem auto 0;
+  max-width: 24rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(127, 184, 255, 0.3);
+  background: rgba(10, 13, 20, 0.6);
+  border-radius: 3px;
+  text-align: left;
+}
+
+.launcher-access-panel.visible {
+  display: block;
+}
+
+.launcher-access-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.launcher-access-copy {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+
+.launcher-access-message {
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--err);
+  opacity: 0.9;
+  margin-bottom: 0.75rem;
+  min-height: 1em;
+}
+
+.launcher-allow-btn {
+  background: var(--accent);
+  color: #0a0d14;
+  border: none;
+  padding: 0.55rem 1.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.launcher-allow-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* ---------------------------------------------------------------------------
+ * SUBAGENT C — puzzle feedback overlays. Both overlays are pure CSS-driven
+ * fades: JS only ever toggles the `.visible` class (or, for the solved
+ * sequence, moves `.visible` from stage-1 to stage-2) — it never touches
+ * opacity/transform directly. Intended toggle sequences:
+ *
+ * LEVEL INTRO — `.level-intro`:
+ *   1. Set `.level-intro-index`/`.level-intro-name`/`.level-intro-hint`
+ *      textContent, then add `.visible` to `.level-intro` (fades in, 0.6s).
+ *   2. ~1500ms later, remove `.visible` (fades out, 0.6s) — total on-screen
+ *      time lands in the spec's 1.5-2s window once the fade-out is counted.
+ *   `.level-intro` itself is `pointer-events:none` always — it must never
+ *   block clicks on whatever's behind it (there is no full-screen modal here).
+ *
+ * SOLVED SEQUENCE — `.solved-overlay` (parent, always pointer-events:none
+ * except its own buttons) containing `.solved-stage-1` and `.solved-stage-2`:
+ *   1. Add `.visible` to `.solved-overlay` AND `.solved-stage-1` together —
+ *      "EXPERIMENT STABLE" fades in.
+ *   2. ~1200-1500ms later, remove `.visible` from `.solved-stage-1`, add
+ *      `.visible` to `.solved-stage-2` — crossfades to the level id/name +
+ *      "SOLVED" + the two buttons. `.solved-stage-2 button` needs
+ *      pointer-events re-enabled (see rule below) since the parent overlay
+ *      is otherwise click-through.
+ *   3. Leave stage-2 visible until NEXT EXPERIMENT / REPLAY is clicked —
+ *      that's a real user action, not a timed fade.
+ * ------------------------------------------------------------------------ */
+
+.level-intro {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  z-index: 10;
+}
+
+.level-intro.visible {
+  opacity: 1;
+}
+
+.level-intro-index {
+  font-size: 0.85rem;
+  letter-spacing: 0.35em;
+  opacity: 0.55;
+}
+
+.level-intro-name {
+  font-size: 1.6rem;
+  letter-spacing: 0.3em;
+  font-weight: 300;
+}
+
+.level-intro-hint {
+  font-size: 0.85rem;
+  opacity: 0.5;
+  letter-spacing: 0.04em;
+  margin-top: 0.2rem;
+}
+
+.solved-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.solved-stage-1,
+.solved-stage-2 {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.solved-stage-1.visible,
+.solved-stage-2.visible {
+  opacity: 1;
+}
+
+.solved-stage-1-text {
+  font-size: 0.95rem;
+  letter-spacing: 0.25em;
+  opacity: 0.85;
+  font-weight: 300;
+}
+
+.solved-stage-2-index {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  opacity: 0.5;
+}
+
+.solved-stage-2-name {
+  font-size: 1.15rem;
+  letter-spacing: 0.25em;
+  font-weight: 300;
+  margin-top: 0.15rem;
+}
+
+.solved-stage-2-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: var(--ok);
+  margin-top: 0.1rem;
+}
+
+.solved-actions {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-top: 0.9rem;
+}
+
+/* Minimal text-style buttons — deliberately NOT the app's big filled
+ * `button` style (see .receiver-power-scale rules above): this is a quiet
+ * moment, not a call-to-action banner. */
+.solved-text-btn {
+  pointer-events: auto;
+  background: none;
+  border: none;
+  padding: 0.2rem 0;
+  color: var(--fg);
+  opacity: 0.75;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.solved-text-btn:hover {
+  opacity: 1;
 }

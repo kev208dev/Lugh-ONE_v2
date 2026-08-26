@@ -1,5 +1,13 @@
 import { WindowManager } from '../runtime/WindowManager';
 import { requestWindowManagementPermissionInBackground } from '../runtime/screenLayout';
+import { LauncherBackgroundDemo } from './backgroundDemo';
+
+// Decorative only — never allowed to block or fail the real launch flow, so
+// it's wired up independently of the critical-element guard below.
+const bgCanvas = document.querySelector<HTMLCanvasElement>('#bg-demo-canvas');
+if (bgCanvas) {
+  new LauncherBackgroundDemo(bgCanvas).start();
+}
 
 const startBtnQ = document.querySelector<HTMLButtonElement>('#start-btn');
 const statusElQ = document.querySelector<HTMLDivElement>('#status');
@@ -84,18 +92,16 @@ async function runLaunchFlow(): Promise<void> {
     return;
   }
 
-  setStatus('환경 확인 중...');
+  setStatus('CALIBRATING...');
 
-  if (!hasWindowManagementApi()) {
-    setStatus('Window Management API 미지원 — 대체 레이아웃으로 진행합니다...');
-  } else {
+  if (hasWindowManagementApi()) {
     // Fire-and-forget: may prompt for permission, but this launch attempt
     // never awaits it (see screenLayout.computeWorkArea doc comment) — a
     // later RESTART can pick up the real multi-screen work area once granted.
     requestWindowManagementPermissionInBackground();
   }
 
-  setStatus('팝업 권한 확인 중...');
+  setStatus('CHECKING WINDOW ACCESS...');
   if (!testPopupCapability()) {
     setStatus('');
     showError('팝업이 차단되어 있습니다. Chrome 팝업 차단을 해제한 뒤 다시 시도하세요.');
@@ -103,14 +109,14 @@ async function runLaunchFlow(): Promise<void> {
     return;
   }
 
-  setStatus('창을 여는 중... (WORLD, SUN, MIRROR, BLACKHOLE, PRISM, EARTH, MARS)');
+  setStatus('OPENING INSTRUMENTS...');
 
   const result = await manager.launchAll(sessionId);
 
   if (result.ok) {
-    setStatus('7개 창 실행됨 — WORLD, SUN, MIRROR, BLACKHOLE, PRISM, EARTH, MARS');
+    setStatus('EXPERIMENT READY');
     startBtn.disabled = false;
-    startBtn.textContent = 'RESTART';
+    startBtn.textContent = 'RESTART EXPERIMENT';
   } else {
     setStatus('');
     showError(result.error);

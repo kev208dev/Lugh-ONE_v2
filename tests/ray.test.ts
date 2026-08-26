@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clipSegmentToRect } from '../src/optics/Ray';
+import { clipSegmentToRect, segmentIntersectsCircle } from '../src/optics/Ray';
 import type { Point, Rect } from '../src/optics/Ray';
 
 const EPS = 1e-9;
@@ -264,5 +264,27 @@ describe('clipSegmentToRect', () => {
     // left edge, and b should equal p2 exactly (since p2 was inside).
     expect(a.x).toBeGreaterThan(p1.x);
     expect(b).toEqual(p2);
+  });
+});
+
+describe('segmentIntersectsCircle', () => {
+  it('true when the segment passes directly through the circle', () => {
+    expect(segmentIntersectsCircle({ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 50, y: 0 }, 10)).toBe(true);
+  });
+
+  it('true when the closest approach is within the radius but off-center', () => {
+    expect(segmentIntersectsCircle({ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 50, y: 8 }, 10)).toBe(true);
+  });
+
+  it('false when the segment passes outside the radius', () => {
+    expect(segmentIntersectsCircle({ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 50, y: 20 }, 10)).toBe(false);
+  });
+
+  it('false when the closest point lies beyond the segment\'s endpoints (line would hit, segment does not)', () => {
+    expect(segmentIntersectsCircle({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 50, y: 0 }, 5)).toBe(false);
+  });
+
+  it('true when an endpoint itself is inside the circle', () => {
+    expect(segmentIntersectsCircle({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 2, y: 2 }, 5)).toBe(true);
   });
 });

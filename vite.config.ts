@@ -10,7 +10,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         launcher: resolve(__dirname, 'index.html'),
-        world: resolve(__dirname, 'world.html'),
         sun: resolve(__dirname, 'sun.html'),
         mirror: resolve(__dirname, 'mirror.html'),
         blackhole: resolve(__dirname, 'blackhole.html'),

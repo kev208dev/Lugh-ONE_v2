@@ -4,9 +4,9 @@
 
 import type { Point } from '../optics/Ray';
 
-export type DeviceId = 'world' | 'sun' | 'prism' | 'earth' | 'mars' | 'mirror' | 'blackhole';
+export type DeviceId = 'sun' | 'prism' | 'earth' | 'mars' | 'mirror' | 'blackhole';
 
-export const DEVICE_IDS: DeviceId[] = ['world', 'sun', 'mirror', 'blackhole', 'prism', 'earth', 'mars'];
+export const DEVICE_IDS: DeviceId[] = ['sun', 'mirror', 'blackhole', 'prism', 'earth', 'mars'];
 
 /** Stable per-device popup name (also the BroadcastChannel scoping key input). */
 export function popupNameFor(id: DeviceId): string {
@@ -44,6 +44,17 @@ export interface WindowGeometry {
   timestamp: number;
 }
 
+/** Intensity-weighted average of the real exit rays (from PRISM's spectrum
+ * trace) that actually land inside one receiver's window — see the
+ * 'level-state' message below. */
+export interface ReceiverBeam {
+  originGlobal: Point;
+  directionGlobal: Point;
+  /** css color string, e.g. "rgb(120,200,255)" — intensity-weighted blend
+   * of the contributing wavelengths' true spectral colors. */
+  color: string;
+}
+
 export type BusMessage =
   | { type: 'hello'; id: DeviceId; sessionId: string }
   | { type: 'bye'; id: DeviceId; sessionId: string }
@@ -51,9 +62,24 @@ export type BusMessage =
   /** Coalesced PRISM rotation: at most ~20-30Hz while actively rotating, plus
    * one immediate send the moment interaction ends. Never sent per-pointer-event. */
   | { type: 'prism-rotation'; angleDeg: number; timestamp: number }
-  /** Broadcast by WORLD (the authoritative receiver-power/level calculator)
-   * whenever it recomputes, driven by the same geometry/rotation events. */
-  | { type: 'level-state'; earthPercent: number; marsPercent: number; complete: boolean }
+  /** Broadcast by PRISM (the authoritative receiver-power/level calculator —
+   * it's the last device before EARTH/MARS and already has the dispersed
+   * spectrum) whenever it recomputes. `apexGlobal` is where the spectrum
+   * fan exits the prism, in global coordinates. `earthBeam`/`marsBeam` are
+   * the actual intensity-weighted origin/direction/color of whichever
+   * sampled wavelengths physically land in that receiver's window — `null`
+   * when none do — so EARTH/MARS can draw their incoming beam along the
+   * REAL exit angle (matching PRISM's own physics) and tinted with the
+   * real spectral color, instead of an approximated line back to apex. */
+  | {
+      type: 'level-state';
+      earthPercent: number;
+      marsPercent: number;
+      complete: boolean;
+      apexGlobal: Point;
+      earthBeam: ReceiverBeam | null;
+      marsBeam: ReceiverBeam | null;
+    }
   /** Coalesced MIRROR rotation — mirrors prism-rotation's throttling contract
    * exactly (max ~20-30Hz while actively rotating, plus one immediate send
    * the moment interaction ends). */
@@ -64,7 +90,26 @@ export type BusMessage =
    * against its own rect (the same technique the SUN->PRISM ray already
    * uses). `absorbed: true` means the ray terminated at this device (e.g. a
    * black hole's event horizon) and there is no continuation to draw. */
-  | { type: 'ray-state'; from: DeviceId; originGlobal: Point; directionGlobal: Point; absorbed: boolean };
+  | { type: 'ray-state'; from: DeviceId; originGlobal: Point; directionGlobal: Point; absorbed: boolean }
+  /** Broadcast by PRISM alongside 'level-state', ONLY when a puzzle level is
+   * active (see level/session.ts) — carries the puzzle state machine's
+   * current state and per-receiver pass/fail so EARTH/MARS (ring visuals)
+   * and any level-level UI can react without duplicating the goal-evaluation
+   * logic themselves. `perReceiver`/`satisfied` mirror
+   * puzzle/GoalEvaluator.ts's GoalEvaluation shape directly. */
+  | {
+      type: 'puzzle-state';
+      state: 'INTRO' | 'PLAYING' | 'STABILIZING' | 'SOLVED' | 'TRANSITIONING';
+      holdProgress: number;
+      satisfied: boolean;
+      perReceiver: Array<{ receiverId: 'earth' | 'mars'; currentPower: number; pass: boolean }>;
+    }
+  /** Broadcast by ANY window on 'r'/'R' (see deviceBootstrap.ts) — every
+   * device that owns mutable state (MIRROR/PRISM's rotation, PRISM's puzzle
+   * state machine) resets itself back to its level's initial configuration.
+   * No payload: a reset always means "this session's current level, from
+   * scratch," never a cross-level jump. */
+  | { type: 'reset-level' };
 
 export interface MessageBus {
   send(msg: BusMessage): void;

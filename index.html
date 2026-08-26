@@ -6,15 +6,27 @@
   <title>Lugh: ONE</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
-<body>
-  <h1>LUGH: ONE</h1>
-  <div class="subtitle">MULTI-WINDOW OPTICAL EXPERIMENT</div>
-  <button id="start-btn">START</button>
-  <div id="status"></div>
-  <div id="error-panel">
-    <div id="error-message"></div>
-    <button id="retry-btn" style="margin-top:0.75rem">RETRY</button>
+<body class="launcher-page">
+  <canvas id="bg-demo-canvas" class="launcher-bg-canvas"></canvas>
+  <div class="launcher-grain"></div>
+  <div class="launcher-vignette"></div>
+
+  <main class="launcher-content">
+    <h1 class="launcher-title">Lugh<span class="launcher-title-colon">:</span><br />ONE</h1>
+    <p class="launcher-tagline">MOVE THE INSTRUMENTS.<br />SHAPE THE LIGHT.</p>
+
+    <button id="start-btn" class="launcher-begin-btn">BEGIN EXPERIMENT</button>
+    <div id="status" class="launcher-status"></div>
+    <p class="launcher-system-status">CHROME DESKTOP &middot; MULTI-WINDOW EXPERIMENT</p>
+  </main>
+
+  <div id="error-panel" class="launcher-access-panel">
+    <div class="launcher-access-title">WINDOW ACCESS REQUIRED</div>
+    <p class="launcher-access-copy">Lugh: ONE uses movable browser windows as physical instruments.</p>
+    <div id="error-message" class="launcher-access-message"></div>
+    <button id="retry-btn" class="launcher-allow-btn">ALLOW &amp; CONTINUE</button>
   </div>
+
   <script type="module" src="/src/launcher/main.ts"></script>
 </body>
 </html>

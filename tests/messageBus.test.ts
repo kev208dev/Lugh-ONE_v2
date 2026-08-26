@@ -59,7 +59,7 @@ describe('MessageBus (BroadcastChannel-backed)', () => {
     const unsubscribe = busB.subscribe((msg) => received.push(msg));
     unsubscribe();
 
-    busA.send({ type: 'hello', id: 'world', sessionId });
+    busA.send({ type: 'hello', id: 'sun', sessionId });
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(received).toHaveLength(0);
@@ -73,7 +73,7 @@ describe('MessageBus (BroadcastChannel-backed)', () => {
     const received: BusMessage[] = [];
     busB.subscribe((msg) => received.push(msg));
 
-    busA.send({ type: 'hello', id: 'world', sessionId: 'session-x' });
+    busA.send({ type: 'hello', id: 'sun', sessionId: 'session-x' });
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(received).toHaveLength(0);
