@@ -33,11 +33,25 @@ export function bootstrapDevicePage(id: DeviceId, opts: BootstrapDevicePageOptio
     if (hud) hud.textContent = formatGeometry(g);
     opts.onSelfUpdate?.(g);
   });
+
+  // Popup documents load in a nondeterministic order. An earlier device's
+  // initial geometry broadcast can therefore happen before a later device
+  // has subscribed, leaving the optical chain permanently waiting until the
+  // user happens to move a window. Every already-running device answers a
+  // new peer's hello with a fresh geometry snapshot, making startup order
+  // irrelevant without adding a permanent heartbeat.
+  const unsubscribeHandshake = bus.subscribe((msg) => {
+    if (msg.type === 'hello' && msg.id !== id) {
+      bus.send({ type: 'geometry-update', geometry: tracker.snapshot() });
+    }
+  });
+
   tracker.start();
 
   bus.send({ type: 'hello', id, sessionId });
   window.addEventListener('beforeunload', () => {
     bus.send({ type: 'bye', id, sessionId });
+    unsubscribeHandshake();
     tracker.stop();
     bus.close();
   });

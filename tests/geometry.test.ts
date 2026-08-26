@@ -125,6 +125,22 @@ describe('GeometryTracker', () => {
     tracker.stop();
   });
 
+  it('returns a fresh snapshot without waiting for the next poll', () => {
+    const win = makeFakeWindow();
+    const onUpdate = vi.fn();
+    const tracker = new GeometryTracker('sun', win, onUpdate);
+
+    tracker.start();
+    (win as any).screenX = 91;
+
+    const snapshot = tracker.snapshot();
+    expect(snapshot.id).toBe('sun');
+    expect(snapshot.screenX).toBe(91);
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+
+    tracker.stop();
+  });
+
   it('does not invoke onUpdate again after stop()', () => {
     const win = makeFakeWindow();
     const onUpdate = vi.fn();
