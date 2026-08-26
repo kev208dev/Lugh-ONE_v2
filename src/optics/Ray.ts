@@ -34,6 +34,25 @@ export interface Rect {
  * touching. Callers that want to skip zero-length results can filter them
  * out by comparing the two returned points.
  */
+/**
+ * True if the segment p1->p2 passes within `radius` of `center` at any
+ * point along [0,1] (not the infinite line) — used for nebula attenuation
+ * zones (a level-authored circular "fog" a beam loses intensity crossing).
+ * Standard closest-point-on-segment-to-a-point distance check.
+ */
+export function segmentIntersectsCircle(p1: Point, p2: Point, center: Point, radius: number): boolean {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const lenSq = dx * dx + dy * dy;
+
+  let t = lenSq === 0 ? 0 : ((center.x - p1.x) * dx + (center.y - p1.y) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+
+  const closest = { x: p1.x + t * dx, y: p1.y + t * dy };
+  const distSq = (closest.x - center.x) ** 2 + (closest.y - center.y) ** 2;
+  return distSq <= radius * radius;
+}
+
 export function clipSegmentToRect(p1: Point, p2: Point, rect: Rect): [Point, Point] | null {
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;

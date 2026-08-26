@@ -1,5 +1,19 @@
 import { WindowManager } from '../runtime/WindowManager';
 import { requestWindowManagementPermissionInBackground } from '../runtime/screenLayout';
+import { LauncherBackgroundDemo } from './backgroundDemo';
+import { LEVELS } from '../level/levels';
+import { loadProgress, markSolved } from '../level/progression';
+import { createMessageBus } from '../runtime/MessageBus';
+import { ExperimentAudio } from '../audio/ExperimentAudio';
+import { SolvedBanner } from '../rendering/SolvedBanner';
+import type { PuzzleState } from '../level/types';
+
+// Decorative only — never allowed to block or fail the real launch flow, so
+// it's wired up independently of the critical-element guard below.
+const bgCanvas = document.querySelector<HTMLCanvasElement>('#bg-demo-canvas');
+if (bgCanvas) {
+  new LauncherBackgroundDemo(bgCanvas).start();
+}
 
 const startBtnQ = document.querySelector<HTMLButtonElement>('#start-btn');
 const statusElQ = document.querySelector<HTMLDivElement>('#status');
@@ -26,6 +40,19 @@ const retryBtn: HTMLButtonElement = retryBtnQ;
 const sessionId = crypto.randomUUID();
 
 const manager = new WindowManager();
+const bus = createMessageBus(sessionId);
+const solvedBanner = new SolvedBanner(document.body);
+const savedProgress = loadProgress();
+const firstUnsolved = LEVELS.findIndex((level) => !savedProgress.solvedLevelIds.includes(level.id));
+let activeLevelIndex = firstUnsolved >= 0 ? firstUnsolved : LEVELS.length - 1;
+let lastPuzzleState: PuzzleState = 'PLAYING';
+let solvedBannerTimer: ReturnType<typeof setTimeout> | undefined;
+let audio: ExperimentAudio | undefined;
+
+function experimentAudio(): ExperimentAudio {
+  audio ??= new ExperimentAudio();
+  return audio;
+}
 
 function setStatus(text: string): void {
   statusEl.textContent = text;
@@ -71,6 +98,11 @@ function testPopupCapability(): boolean {
 
 async function runLaunchFlow(): Promise<void> {
   hideError();
+  solvedBanner.hide();
+  if (solvedBannerTimer !== undefined) clearTimeout(solvedBannerTimer);
+  solvedBannerTimer = undefined;
+  audio?.stabilizingStop();
+  lastPuzzleState = 'PLAYING';
   // Defensive: a retry must never accumulate windows even if a previous
   // partial state somehow survived.
   manager.closeAll();
@@ -84,18 +116,16 @@ async function runLaunchFlow(): Promise<void> {
     return;
   }
 
-  setStatus('환경 확인 중...');
+  setStatus('CALIBRATING...');
 
-  if (!hasWindowManagementApi()) {
-    setStatus('Window Management API 미지원 — 대체 레이아웃으로 진행합니다...');
-  } else {
+  if (hasWindowManagementApi()) {
     // Fire-and-forget: may prompt for permission, but this launch attempt
     // never awaits it (see screenLayout.computeWorkArea doc comment) — a
     // later RESTART can pick up the real multi-screen work area once granted.
     requestWindowManagementPermissionInBackground();
   }
 
-  setStatus('팝업 권한 확인 중...');
+  setStatus('CHECKING WINDOW ACCESS...');
   if (!testPopupCapability()) {
     setStatus('');
     showError('팝업이 차단되어 있습니다. Chrome 팝업 차단을 해제한 뒤 다시 시도하세요.');
@@ -103,14 +133,15 @@ async function runLaunchFlow(): Promise<void> {
     return;
   }
 
-  setStatus('창을 여는 중... (WORLD, SUN, MIRROR, BLACKHOLE, PRISM, EARTH, MARS)');
+  setStatus('OPENING INSTRUMENTS...');
 
-  const result = await manager.launchAll(sessionId);
+  const level = LEVELS[activeLevelIndex];
+  const result = await manager.launchAll(sessionId, level);
 
   if (result.ok) {
-    setStatus('7개 창 실행됨 — WORLD, SUN, MIRROR, BLACKHOLE, PRISM, EARTH, MARS');
+    setStatus(`${String(level.index + 1).padStart(2, '0')} · ${level.name.toUpperCase()} — EXPERIMENT READY`);
     startBtn.disabled = false;
-    startBtn.textContent = 'RESTART';
+    startBtn.textContent = 'RESTART EXPERIMENT';
   } else {
     setStatus('');
     showError(result.error);
@@ -119,9 +150,46 @@ async function runLaunchFlow(): Promise<void> {
 }
 
 startBtn.addEventListener('click', () => {
+  experimentAudio().hover();
   void runLaunchFlow();
 });
 
 retryBtn.addEventListener('click', () => {
+  experimentAudio().hover();
   void runLaunchFlow();
+});
+
+bus.subscribe((msg) => {
+  if (msg.type !== 'puzzle-state' || msg.state === lastPuzzleState) return;
+
+  if (msg.state === 'STABILIZING') {
+    audio?.stabilizingStart();
+  } else if (lastPuzzleState === 'STABILIZING') {
+    audio?.stabilizingStop();
+  }
+
+  if (msg.state === 'SOLVED') {
+    const level = LEVELS[activeLevelIndex];
+    markSolved(level.id, level.index);
+    audio?.solved();
+    solvedBanner.showStable();
+    setStatus('EXPERIMENT STABLE');
+    solvedBannerTimer = setTimeout(() => {
+      solvedBanner.showSolved(
+        level.index + 1,
+        level.name,
+        () => {
+          experimentAudio().hover();
+          activeLevelIndex = (activeLevelIndex + 1) % LEVELS.length;
+          void runLaunchFlow();
+        },
+        () => {
+          experimentAudio().hover();
+          void runLaunchFlow();
+        }
+      );
+    }, 1700);
+  }
+
+  lastPuzzleState = msg.state;
 });

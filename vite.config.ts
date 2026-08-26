@@ -6,11 +6,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   root: '.',
+  // GitHub project Pages serves the app below /Lugh-ONE_v2/. Keep the
+  // existing root URL during local development and local production builds.
+  base: process.env.VITE_BASE_PATH ?? '/',
   build: {
     rollupOptions: {
       input: {
         launcher: resolve(__dirname, 'index.html'),
-        world: resolve(__dirname, 'world.html'),
         sun: resolve(__dirname, 'sun.html'),
         mirror: resolve(__dirname, 'mirror.html'),
         blackhole: resolve(__dirname, 'blackhole.html'),
@@ -21,6 +23,7 @@ export default defineConfig({
     }
   },
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    include: ['tests/**/*.test.ts']
   }
 });

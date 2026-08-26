@@ -1,12 +1,12 @@
 import { DEVICE_IDS, popupNameFor, type DeviceId } from './types';
-import { DEVICE_LAYOUTS, computeWorkArea, resolveWindowFeatures } from './screenLayout';
+import { DEVICE_LAYOUTS, computeWorkArea, resolveWindowFeatures, resolveDeviceLayoutsForLevel } from './screenLayout';
+import type { LevelDefinition } from '../level/types';
 
 export type LaunchResult =
   | { ok: true; windows: Record<DeviceId, Window> }
   | { ok: false; error: string };
 
 const DEVICE_LABELS: Record<DeviceId, string> = {
-  world: 'WORLD',
   sun: 'SUN',
   prism: 'PRISM',
   earth: 'EARTH',
@@ -15,8 +15,10 @@ const DEVICE_LABELS: Record<DeviceId, string> = {
   blackhole: 'BLACKHOLE'
 };
 
-function urlFor(id: DeviceId, sessionId: string): string {
-  return `/${id}.html?session=${encodeURIComponent(sessionId)}`;
+function urlFor(id: DeviceId, sessionId: string, levelId: string | undefined): string {
+  const params = new URLSearchParams({ session: sessionId });
+  if (levelId) params.set('level', levelId);
+  return `${import.meta.env.BASE_URL}${id}.html?${params.toString()}`;
 }
 
 function featuresString(rect: { left: number; top: number; width: number; height: number }): string {
@@ -35,7 +37,16 @@ export class WindowManager {
   private registry: Map<DeviceId, Window> = new Map();
   private pollHandle: ReturnType<typeof setInterval> | undefined;
 
-  async launchAll(sessionId: string): Promise<LaunchResult> {
+  /**
+   * `level`, when given, opens only that level's devices (sun + its
+   * instruments + its receivers, see level/types.ts's devicesForLevel) at
+   * that level's own positions, and tags each popup URL with `?level=` so
+   * the device page can resolve its own upstream chain (see
+   * level/session.ts). Omitting it preserves the ORIGINAL behavior exactly
+   * — every device, at the fixed DEVICE_LAYOUTS spot — so any existing
+   * caller (or a device page opened directly) is unaffected.
+   */
+  async launchAll(sessionId: string, level?: LevelDefinition): Promise<LaunchResult> {
     // Defensive: never accumulate windows across attempts.
     this.closeAll();
 
@@ -46,17 +57,20 @@ export class WindowManager {
       return { ok: false, error: `화면 정보를 가져오지 못했습니다: ${String(err)}` };
     }
 
+    const layouts = level ? resolveDeviceLayoutsForLevel(level) : DEVICE_LAYOUTS;
+    const deviceIds = level ? layouts.map((l) => l.id) : DEVICE_IDS;
+
     const opened: Map<DeviceId, Window> = new Map();
 
-    for (const id of DEVICE_IDS) {
-      const layout = DEVICE_LAYOUTS.find((l: { id: DeviceId }) => l.id === id);
+    for (const id of deviceIds) {
+      const layout = layouts.find((l: { id: DeviceId }) => l.id === id);
       if (!layout) {
         this.closeOpened(opened);
         return { ok: false, error: `레이아웃 정의가 없습니다: ${id}` };
       }
 
       const rect = resolveWindowFeatures(layout, workArea);
-      const win = window.open(urlFor(id, sessionId), popupNameFor(id), featuresString(rect));
+      const win = window.open(urlFor(id, sessionId, level?.id), popupNameFor(id), featuresString(rect));
 
       if (!win) {
         this.closeOpened(opened);

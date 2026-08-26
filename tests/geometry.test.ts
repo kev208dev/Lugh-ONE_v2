@@ -77,7 +77,7 @@ describe('resolveWindowFeatures', () => {
 
   it('never produces a negative left/top even when the popup is bigger than the work area', () => {
     const tinyWorkArea: WorkArea = { left: 0, top: 0, width: 100, height: 100 };
-    const layout: DeviceLayout = { id: 'world', xPct: 0.5, yPct: 0.5, width: 420, height: 280 };
+    const layout: DeviceLayout = { id: 'sun', xPct: 0.5, yPct: 0.5, width: 420, height: 280 };
     const rect = resolveWindowFeatures(layout, tinyWorkArea);
 
     expect(rect.left).toBe(0);

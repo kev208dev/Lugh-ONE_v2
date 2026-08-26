@@ -1,4 +1,6 @@
-import type { DeviceLayout, WorkArea } from './types';
+import type { DeviceId, DeviceLayout, WorkArea } from './types';
+import type { LevelDefinition } from '../level/types';
+import { devicesForLevel } from '../level/types';
 
 /**
  * Default popup layout, expressed as CENTER-point percentages (0..1) of the
@@ -6,18 +8,17 @@ import type { DeviceLayout, WorkArea } from './types';
  * updating the design spec.
  */
 export const DEVICE_LAYOUTS: DeviceLayout[] = [
-  // WORLD is a small debug/HUD window in Phase 0 (no optics rendering yet).
-  { id: 'world', xPct: 0.1, yPct: 0.1, width: 420, height: 280 },
-  // Height bumped from 200 to 260: at Windows display-scale factors above
-  // 100% (125%/150%, very common on laptops), the label + multi-line debug
-  // HUD text can overflow a 200px-tall popup and get clipped by body's
-  // overflow:hidden — the physics-hud line (bottom-most) disappears first.
-  { id: 'sun', xPct: 0.15, yPct: 0.5, width: 260, height: 260 },
-  { id: 'mirror', xPct: 0.32, yPct: 0.25, width: 260, height: 260 },
-  { id: 'blackhole', xPct: 0.32, yPct: 0.75, width: 260, height: 260 },
-  { id: 'prism', xPct: 0.5, yPct: 0.5, width: 260, height: 260 },
-  { id: 'mars', xPct: 0.8, yPct: 0.35, width: 260, height: 260 },
-  { id: 'earth', xPct: 0.8, yPct: 0.68, width: 260, height: 260 }
+  // Guided-path layout: a single real chain SUN -> MIRROR -> BLACKHOLE ->
+  // PRISM -> EARTH/MARS, left to right. MIRROR and PRISM are the "controls"
+  // (rotate/reposition to route the beam); BLACKHOLE sits off the direct
+  // mirror->prism line as a hazard/aid (bends the beam if passed near, but
+  // absorbs it if passed too close); EARTH/MARS are fixed targets.
+  { id: 'sun', xPct: 0.08, yPct: 0.5, width: 260, height: 260 },
+  { id: 'mirror', xPct: 0.28, yPct: 0.5, width: 260, height: 260 },
+  { id: 'blackhole', xPct: 0.48, yPct: 0.28, width: 260, height: 260 },
+  { id: 'prism', xPct: 0.66, yPct: 0.55, width: 260, height: 260 },
+  { id: 'mars', xPct: 0.88, yPct: 0.35, width: 260, height: 260 },
+  { id: 'earth', xPct: 0.88, yPct: 0.72, width: 260, height: 260 }
 ];
 
 function fallbackWorkArea(): WorkArea {
@@ -83,6 +84,40 @@ export function requestWindowManagementPermissionInBackground(): void {
       // ignore — user declined or API unsupported, fallback layout stands
     });
   }
+}
+
+/**
+ * Builds the device layout list for one puzzle level: every device the
+ * level actually opens (sun + its instruments + its receivers — see
+ * level/types.ts's devicesForLevel), positioned from the level's own
+ * xPct/yPct where it specifies one (sun, receivers, initialDevicePlacement)
+ * and falling back to DEVICE_LAYOUTS' default spot/size for anything a
+ * level doesn't explicitly place. This is purely additive — DEVICE_LAYOUTS
+ * itself is untouched, so opening device pages with no `level` param (the
+ * original flow) is completely unaffected.
+ */
+export function resolveDeviceLayoutsForLevel(level: LevelDefinition): DeviceLayout[] {
+  const ids = devicesForLevel(level);
+
+  const overrides = new Map<DeviceId, { xPct: number; yPct: number }>();
+  overrides.set('sun', level.sun);
+  for (const r of level.receivers) overrides.set(r.id, r);
+  for (const p of level.initialDevicePlacement) overrides.set(p.id, p);
+
+  return ids.map((id) => {
+    const fallback = DEVICE_LAYOUTS.find((l) => l.id === id);
+    const pos = overrides.get(id) ?? fallback;
+    if (!pos) {
+      throw new Error(`resolveDeviceLayoutsForLevel: no position for device "${id}" — level "${level.id}" opens it but never places it`);
+    }
+    return {
+      id,
+      xPct: pos.xPct,
+      yPct: pos.yPct,
+      width: fallback?.width ?? 260,
+      height: fallback?.height ?? 260
+    };
+  });
 }
 
 /**
