@@ -2,7 +2,10 @@ name: Deploy Vite site to GitHub Pages
 
 on:
   push:
-    branches: [main, feature/guided-chain]
+    branches:
+      - main
+      - feature/guided-chain
+      - worktree-agent-a7e9129dbc4b2cb40
   workflow_dispatch:
 
 permissions:
