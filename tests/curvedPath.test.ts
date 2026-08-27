@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildDeflectedPath, clipPathToRect, pathDirectionNear } from '../src/optics/CurvedPath';
+import {
+  buildDeflectedPath,
+  clipPathToRect,
+  firstPathPolygonIntersection,
+  pathDirectionNear
+} from '../src/optics/CurvedPath';
 import { deflectRay } from '../src/optics/BlackHolePhysics';
 
 describe('shared gravitational curve', () => {
@@ -41,5 +46,29 @@ describe('shared gravitational curve', () => {
     const entryDirection = pathDirectionNear(visibleInPrism, visibleInPrism[0])!;
     const exitDirection = pathDirectionNear(visibleInPrism, visibleInPrism.at(-1)!)!;
     expect(exitDirection.y).toBeGreaterThan(entryDirection.y);
+  });
+
+  it('uses the curved path crossing instead of teleporting an extended tangent into the prism', () => {
+    const prism = [
+      { x: 100, y: 80 },
+      { x: 140, y: 140 },
+      { x: 60, y: 140 }
+    ];
+    const crossingPath = [
+      { x: 0, y: 120 },
+      { x: 80, y: 118 },
+      { x: 120, y: 110 }
+    ];
+    const missingCurve = [
+      { x: 0, y: 40 },
+      { x: 80, y: 45 },
+      { x: 160, y: 50 }
+    ];
+
+    const hit = firstPathPolygonIntersection(crossingPath, prism);
+    expect(hit).not.toBeNull();
+    expect(hit!.segmentIndex).toBe(1);
+    expect(hit!.point.x).toBeGreaterThan(60);
+    expect(firstPathPolygonIntersection(missingCurve, prism)).toBeNull();
   });
 });

@@ -7,6 +7,14 @@ export interface ColoredBeamSegment {
   intensity?: number;
 }
 
+/** Stable visual separation for wavelength bands that are physically almost
+ * coincident. Without this small stripe, additive RGB strokes combine back
+ * into a white beam in the early levels. */
+export function spectralStripeOffset(index: number, count: number, width = 16): number {
+  if (count <= 1) return 0;
+  return (index / (count - 1) - 0.5) * width;
+}
+
 /**
  * Thin wrapper around a full-window <canvas> (see .ray-canvas in style.css)
  * that draws a single white line segment in the canvas's own local
@@ -125,27 +133,35 @@ export class LightRenderer {
     if (segments.length === 0) return;
 
     ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalCompositeOperation = 'source-over';
     ctx.lineCap = 'round';
 
-    for (const segment of segments) {
+    segments.forEach((segment, index) => {
       const intensity = Math.min(1, Math.max(0, segment.intensity ?? 1));
-      if (intensity <= 0) continue;
+      if (intensity <= 0) return;
+      const dx = segment.end.x - segment.start.x;
+      const dy = segment.end.y - segment.start.y;
+      const length = Math.hypot(dx, dy) || 1;
+      const stripeOffset = spectralStripeOffset(index, segments.length);
+      const offset = {
+        x: (-dy / length) * stripeOffset,
+        y: (dx / length) * stripeOffset
+      };
 
       ctx.beginPath();
-      ctx.moveTo(segment.start.x, segment.start.y);
-      ctx.lineTo(segment.end.x, segment.end.y);
+      ctx.moveTo(segment.start.x + offset.x, segment.start.y + offset.y);
+      ctx.lineTo(segment.end.x + offset.x, segment.end.y + offset.y);
       ctx.strokeStyle = segment.color;
-      ctx.globalAlpha = 0.08 + intensity * 0.1;
-      ctx.lineWidth = 8;
+      ctx.globalAlpha = 0.08 + intensity * 0.08;
+      ctx.lineWidth = 5;
       ctx.stroke();
-      ctx.globalAlpha = 0.18 + intensity * 0.22;
-      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.28 + intensity * 0.32;
+      ctx.lineWidth = 2.2;
       ctx.stroke();
-      ctx.globalAlpha = 0.5 + intensity * 0.5;
-      ctx.lineWidth = 1.15;
+      ctx.globalAlpha = 0.72 + intensity * 0.28;
+      ctx.lineWidth = 1.1;
       ctx.stroke();
-    }
+    });
 
     ctx.restore();
   }

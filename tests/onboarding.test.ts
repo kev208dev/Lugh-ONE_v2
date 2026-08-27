@@ -35,6 +35,8 @@ describe('런처 게임 안내', () => {
     expect(tutorialCopy).toContain('1.5초');
     expect(tutorialCopy).toContain('R 키');
     expect(tutorialCopy).toContain('다음 단계 시작 버튼');
+    expect(tutorialCopy).toContain('주소창 오른쪽 위');
+    expect(tutorialCopy).toContain('팝업 및 리디렉션을 항상 허용');
   });
 
   it('안내를 진행하고 완료 상태를 저장한 뒤 첫 실험을 시작한다', () => {

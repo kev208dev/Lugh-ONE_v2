@@ -60,6 +60,8 @@ describe('launcher shell', () => {
     expect(startButton?.textContent).toContain('실험 시작');
     expect(restartFirstButton?.type).toBe('button');
     expect(restartFirstButton?.textContent).toContain('1단계부터 다시 시작');
+    expect(doc.querySelector('.launcher-popup-required')?.textContent).toContain('주소창 오른쪽 위');
+    expect(doc.querySelector('.launcher-popup-required')?.textContent).toContain('팝업 및 리디렉션을 항상 허용');
 
     expect(mission).not.toBeNull();
     expect(mission?.querySelector('#active-level-number')?.textContent?.trim()).toBe('01');

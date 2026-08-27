@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LightRenderer } from '../src/rendering/LightRenderer';
+import { LightRenderer, spectralStripeOffset } from '../src/rendering/LightRenderer';
 
 function makeCanvas() {
   const strokeColors: string[] = [];
@@ -32,6 +32,12 @@ function makeCanvas() {
 }
 
 describe('LightRenderer spectral output', () => {
+  it('separates overlapping wavelengths into an ordered rainbow stripe', () => {
+    expect(spectralStripeOffset(0, 33)).toBe(-8);
+    expect(spectralStripeOffset(16, 33)).toBe(0);
+    expect(spectralStripeOffset(32, 33)).toBe(8);
+  });
+
   it('draws every wavelength color as its own beam instead of averaging them', () => {
     const { canvas, ctx, strokeColors } = makeCanvas();
     const renderer = new LightRenderer(canvas);
