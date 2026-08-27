@@ -303,6 +303,36 @@ body.launcher-page {
   transition: transform 0.2s ease, border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
 
+.launcher-restart-first-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: min(100%, 13rem);
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(190, 220, 255, 0.24);
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(242, 245, 251, 0.75);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 620;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.launcher-restart-first-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(127, 184, 255, 0.65);
+  background: rgba(127, 184, 255, 0.08);
+  color: var(--fg);
+}
+
+.launcher-restart-first-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .launcher-tutorial-btn {
   display: inline-flex;
   align-items: center;
@@ -1116,6 +1146,7 @@ body.launcher-page.onboarding-open {
 
   .launcher-action-buttons,
   .launcher-begin-btn,
+  .launcher-restart-first-btn,
   .launcher-tutorial-btn {
     width: 100%;
   }

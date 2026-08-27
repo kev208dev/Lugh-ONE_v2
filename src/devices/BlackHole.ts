@@ -1,5 +1,10 @@
 import blackHoleImageUrl from '../assets/blackhole.png';
 
+// The supplied PNG's event-horizon disc is slightly right/below the bitmap's
+// geometric midpoint. Position this visual focus at the exact physics center
+// so a ray visibly bends toward the same point used by BlackHolePhysics.
+export const BLACK_HOLE_IMAGE_FOCUS = { x: 0.53, y: 0.53 } as const;
+
 /**
  * Thin wrapper around a full-window <canvas> that draws a static black hole:
  * an outer accretion-glow, a thin bright photon ring, and a solid near-black
@@ -50,7 +55,13 @@ export class BlackHoleRenderer {
       const scale = Math.min(maxWidth / this.image.naturalWidth, maxHeight / this.image.naturalHeight);
       const width = this.image.naturalWidth * scale;
       const height = this.image.naturalHeight * scale;
-      ctx.drawImage(this.image, cx - width / 2, cy - height / 2, width, height);
+      ctx.drawImage(
+        this.image,
+        cx - width * BLACK_HOLE_IMAGE_FOCUS.x,
+        cy - height * BLACK_HOLE_IMAGE_FOCUS.y,
+        width,
+        height
+      );
       return;
     }
 

@@ -53,9 +53,17 @@
       <p class="launcher-tagline">창을 움직이고<br />빛의 길을 만드세요.</p>
 
       <div class="launcher-actions">
-        <button id="start-btn" class="launcher-begin-btn" type="button">
-          <span>실험 시작</span>
-        </button>
+        <div class="launcher-action-buttons">
+          <button id="start-btn" class="launcher-begin-btn" type="button">
+            <span>실험 시작</span>
+          </button>
+          <button
+            id="restart-first-btn"
+            class="launcher-restart-first-btn"
+            type="button"
+            title="저장된 완료 기록을 초기화하고 1단계부터 다시 시작합니다"
+          >1단계부터 다시 시작</button>
+        </div>
         <div id="status" class="launcher-status" role="status" aria-live="polite"></div>
       </div>
 

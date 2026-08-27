@@ -47,4 +47,20 @@ describe('LightRenderer spectral output', () => {
     expect(ctx.stroke).toHaveBeenCalledTimes(6);
     expect(ctx.clearRect).toHaveBeenCalledTimes(1);
   });
+
+  it('draws a shared sampled path as one continuous glowing beam', () => {
+    const { canvas, ctx } = makeCanvas();
+    const renderer = new LightRenderer(canvas);
+
+    renderer.drawPath([
+      { x: 0, y: 10 },
+      { x: 50, y: 18 },
+      { x: 100, y: 40 }
+    ]);
+
+    expect(ctx.moveTo).toHaveBeenCalledWith(0, 10);
+    expect(ctx.lineTo).toHaveBeenNthCalledWith(1, 50, 18);
+    expect(ctx.lineTo).toHaveBeenNthCalledWith(2, 100, 40);
+    expect(ctx.stroke).toHaveBeenCalledTimes(3);
+  });
 });

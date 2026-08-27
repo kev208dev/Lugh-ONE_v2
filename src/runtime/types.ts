@@ -105,7 +105,16 @@ export type BusMessage =
    * against its own rect (the same technique the SUN->PRISM ray already
    * uses). `absorbed: true` means the ray terminated at this device (e.g. a
    * black hole's event horizon) and there is no continuation to draw. */
-  | { type: 'ray-state'; from: DeviceId; originGlobal: Point; directionGlobal: Point; absorbed: boolean }
+  | {
+      type: 'ray-state';
+      from: DeviceId;
+      originGlobal: Point;
+      directionGlobal: Point;
+      absorbed: boolean;
+      /** Optional sampled global path. BLACKHOLE uses this so the exact
+       * gravitational curve continues seamlessly through the PRISM popup. */
+      pathGlobal?: Point[];
+    }
   /** A light-producing page reports how much energy a fixed nebula obstacle
    * absorbed. Each nebula combines reports by source so an idle source does
    * not erase a simultaneous hit from another stage of the optical chain. */

@@ -9,6 +9,7 @@ import { deflectRay, DEFAULT_BLACK_HOLE_CONFIG } from '../optics/BlackHolePhysic
 import { parallelRayFromSun } from '../optics/upstream';
 import { currentLevel } from '../level/session';
 import { resolveUpstream } from '../level/types';
+import { buildDeflectedPath, clipPathToRect } from '../optics/CurvedPath';
 
 // Which device this window treats as its light source. Puzzle levels that
 // don't include MIRROR route straight from SUN instead (see
@@ -54,8 +55,6 @@ function recomputeFromSun(): void {
   incomingRay = selfGeometry && sunGeometry ? parallelRayFromSun(sunGeometry, selfGeometry) : undefined;
   runPhysicsAndBroadcast();
 }
-
-const RAY_TEST_DISTANCE = 1_000_000;
 
 /**
  * Computes the deflection (or absorption) of the incoming ray, and draws the
@@ -129,29 +128,37 @@ function runPhysicsAndBroadcast(): void {
       return;
     }
 
-    renderer.clear(); // the whole path is drawn as one curve below instead
+    renderer.clear(); // the whole path is drawn as one shared path below
 
     const outgoingDirLocal = result.outgoingDirection!;
-    const farLocal = {
-      x: result.deflectionPoint.x + outgoingDirLocal.x * RAY_TEST_DISTANCE,
-      y: result.deflectionPoint.y + outgoingDirLocal.y * RAY_TEST_DISTANCE
-    };
-    const departClipped = clipSegmentToRect(result.deflectionPoint, farLocal, localRect);
-
     const entryPoint = approachClipped ? approachClipped[0] : originLocal;
-    const exitPoint = departClipped ? departClipped[1] : result.deflectionPoint;
-    // Control point pulled from the closest-approach point toward the
-    // center — always noticeably pulled in (floor 0.35) so the bend visibly
-    // pivots around the black hole's center point (the same point
-    // BlackHoleRenderer draws its disc/ring around), and pulled almost all
-    // the way to the center for a close pass, for a real "wrap around the
-    // center" look rather than a shallow kink near the edge.
-    const wrapAmount = Math.max(0.35, Math.min(0.9, (DEFAULT_BLACK_HOLE_CONFIG.eventHorizonRadius * 2.5) / Math.max(1, result.closestDistance)));
-    const control = pullTowardCenter(result.deflectionPoint, wrapAmount);
-    outgoingRenderer.drawCurveSegment(entryPoint, control, exitPoint);
+    // Start with the exact incoming tangent, then turn smoothly toward the
+    // physics result over a long enough distance to remain curved inside
+    // the downstream prism window. A final straight extension preserves the
+    // same outgoing ray even if the player moves the prism farther away.
+    const departurePathLocal = buildDeflectedPath(result.deflectionPoint, dir, outgoingDirLocal);
+    const finalCurvePoint = departurePathLocal.at(-1)!;
+    const fullPathLocal = [
+      entryPoint,
+      ...departurePathLocal,
+      {
+        x: finalCurvePoint.x + outgoingDirLocal.x * 1_000_000,
+        y: finalCurvePoint.y + outgoingDirLocal.y * 1_000_000
+      }
+    ];
+    const visiblePathLocal = clipPathToRect(fullPathLocal, localRect);
+    outgoingRenderer.drawPath(visiblePathLocal);
 
+    const pathGlobal = fullPathLocal.map((point) => localToGlobal(point, selfGeometry!));
     const originGlobal = localToGlobal(result.deflectionPoint, selfGeometry);
-    bus.send({ type: 'ray-state', from: 'blackhole', originGlobal, directionGlobal: outgoingDirLocal, absorbed: false });
+    bus.send({
+      type: 'ray-state',
+      from: 'blackhole',
+      originGlobal,
+      directionGlobal: outgoingDirLocal,
+      absorbed: false,
+      pathGlobal
+    });
 
     const deg = ((result.deflectionAngleRad ?? 0) * 180) / Math.PI;
     if (physicsHud) {

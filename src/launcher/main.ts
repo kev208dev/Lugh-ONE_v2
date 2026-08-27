@@ -1,7 +1,7 @@
 import { WindowManager } from '../runtime/WindowManager';
 import { requestWindowManagementPermissionInBackground } from '../runtime/screenLayout';
 import { LEVELS } from '../level/levels';
-import { loadProgress, markSolved } from '../level/progression';
+import { loadProgress, markSolved, resetProgress } from '../level/progression';
 import { createMessageBus } from '../runtime/MessageBus';
 import { ExperimentAudio } from '../audio/ExperimentAudio';
 import { SolvedBanner } from '../rendering/SolvedBanner';
@@ -36,6 +36,7 @@ const deviceListQ = document.querySelector<HTMLDivElement>('#device-list');
 const goalSummaryQ = document.querySelector<HTMLParagraphElement>('#goal-summary');
 const levelNavQ = document.querySelector<HTMLElement>('#level-nav');
 const tutorialBtnQ = document.querySelector<HTMLButtonElement>('#tutorial-btn');
+const restartFirstBtnQ = document.querySelector<HTMLButtonElement>('#restart-first-btn');
 const onboardingRootQ = document.querySelector<HTMLElement>('#onboarding');
 
 if (
@@ -55,6 +56,7 @@ if (
   !goalSummaryQ ||
   !levelNavQ ||
   !tutorialBtnQ ||
+  !restartFirstBtnQ ||
   !onboardingRootQ
 ) {
   throw new Error('launcher: expected DOM elements missing from index.html');
@@ -80,6 +82,7 @@ const deviceList: HTMLDivElement = deviceListQ;
 const goalSummary: HTMLParagraphElement = goalSummaryQ;
 const levelNav: HTMLElement = levelNavQ;
 const tutorialBtn: HTMLButtonElement = tutorialBtnQ;
+const restartFirstBtn: HTMLButtonElement = restartFirstBtnQ;
 const onboardingRoot: HTMLElement = onboardingRootQ;
 
 // One sessionId per page load, reused across retries within this load so
@@ -212,7 +215,8 @@ function hideError(): void {
 function setLaunchBusy(busy: boolean): void {
   startBtn.disabled = busy;
   retryBtn.disabled = busy;
-  for (const button of [startBtn, retryBtn]) {
+  restartFirstBtn.disabled = busy;
+  for (const button of [startBtn, retryBtn, restartFirstBtn]) {
     if (busy) {
       button.setAttribute('aria-busy', 'true');
     } else {
@@ -273,7 +277,7 @@ function testPopupCapability(): boolean {
   return true;
 }
 
-async function runLaunchFlow(): Promise<void> {
+async function runLaunchFlow(options: { resetProgressOnSuccess?: boolean } = {}): Promise<void> {
   hideError();
   solvedBanner.hide();
   clearSolvedSequence();
@@ -317,6 +321,10 @@ async function runLaunchFlow(): Promise<void> {
   const result = await manager.launchAll(sessionId, level);
 
   if (result.ok) {
+    if (options.resetProgressOnSuccess) {
+      progress = resetProgress();
+      renderLevelOverview();
+    }
     await finishLaunchTransition(transitionStartedAt);
     document.body.classList.add('experiment-active');
     setStatus('실험 창이 준비되었습니다');
@@ -334,6 +342,14 @@ startBtn.addEventListener('click', () => {
 retryBtn.addEventListener('click', () => {
   experimentAudio().hover();
   void runLaunchFlow();
+});
+
+restartFirstBtn.addEventListener('click', () => {
+  experimentAudio().hover();
+  activeLevelIndex = 0;
+  startBtnLabel.textContent = '실험 시작';
+  renderLevelOverview();
+  void runLaunchFlow({ resetProgressOnSuccess: true });
 });
 
 let onboardingStorage: Storage | undefined;

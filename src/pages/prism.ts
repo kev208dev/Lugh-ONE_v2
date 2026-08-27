@@ -17,6 +17,7 @@ import { resolveUpstream } from '../level/types';
 import { evaluateGoal } from '../puzzle/GoalEvaluator';
 import { PuzzleStateMachine } from '../puzzle/PuzzleStateMachine';
 import { nebulaCircleFromGeometry, traceNebulaAbsorption } from '../optics/NebulaOcclusion';
+import { clipPathToRect, pathDirectionNear } from '../optics/CurvedPath';
 
 // See src/pages/blackhole.ts's identical comment: a level that skips
 // straight from SUN (no MIRROR or BLACKHOLE) routes PRISM directly to SUN's
@@ -194,7 +195,7 @@ function powerAtReceiver(
 // straight line synthesized from SUN's geometry when upstreamId is 'sun'.
 // `undefined` = nothing heard yet; `null` = the beam was absorbed/lost
 // upstream — no light reaches the prism at all in that case.
-let incomingRay: { originGlobal: Point; directionGlobal: Point } | null | undefined;
+let incomingRay: { originGlobal: Point; directionGlobal: Point; pathGlobal?: Point[] } | null | undefined;
 /** upstreamId === 'sun' only: the raw geometry-update from SUN. */
 let sunGeometry: WindowGeometry | undefined;
 
@@ -212,12 +213,33 @@ function renderIncoming(entryPointLocal: Point | null): void {
     return;
   }
 
+  const myRect = windowRectGlobal(selfGeometry);
+  if (incomingRay.pathGlobal) {
+    const visibleGlobal = clipPathToRect(incomingRay.pathGlobal, myRect);
+    if (visibleGlobal.length >= 2) {
+      let visibleLocal = visibleGlobal.map((point) => globalToLocal(point, selfGeometry!));
+      if (entryPointLocal) {
+        let closestIndex = 0;
+        let closestDistanceSquared = Number.POSITIVE_INFINITY;
+        visibleLocal.forEach((point, index) => {
+          const distanceSquared = (point.x - entryPointLocal.x) ** 2 + (point.y - entryPointLocal.y) ** 2;
+          if (distanceSquared < closestDistanceSquared) {
+            closestDistanceSquared = distanceSquared;
+            closestIndex = index;
+          }
+        });
+        visibleLocal = [...visibleLocal.slice(0, closestIndex + 1), entryPointLocal];
+      }
+      renderer.drawPath(visibleLocal);
+      return;
+    }
+  }
+
   const p1 = incomingRay.originGlobal;
   const p2 = {
     x: p1.x + incomingRay.directionGlobal.x * 1_000_000,
     y: p1.y + incomingRay.directionGlobal.y * 1_000_000
   };
-  const myRect = windowRectGlobal(selfGeometry);
   const clipped = clipSegmentToRect(p1, p2, myRect);
 
   if (!clipped) {
@@ -303,8 +325,16 @@ function runPhysicsAndReportTiming(): void {
   }
 
   try {
-    const originLocal = globalToLocal(incomingRay.originGlobal, selfGeometry);
-    const dir = incomingRay.directionGlobal; // direction vectors are translation-invariant
+    let originGlobal = incomingRay.originGlobal;
+    let dir = incomingRay.directionGlobal; // direction vectors are translation-invariant
+    if (incomingRay.pathGlobal) {
+      const visiblePath = clipPathToRect(incomingRay.pathGlobal, windowRectGlobal(selfGeometry));
+      if (visiblePath.length >= 2) {
+        originGlobal = visiblePath[0];
+        dir = pathDirectionNear(incomingRay.pathGlobal, windowRectGlobalCenter(selfGeometry)) ?? dir;
+      }
+    }
+    const originLocal = globalToLocal(originGlobal, selfGeometry);
 
     const vertices = computePrismVertices(window.innerWidth, window.innerHeight, angleDeg);
 
@@ -392,7 +422,9 @@ bus.subscribe((msg) => {
     return;
   }
   if (upstreamId !== 'sun' && msg.type === 'ray-state' && msg.from === upstreamId) {
-    incomingRay = msg.absorbed ? null : { originGlobal: msg.originGlobal, directionGlobal: msg.directionGlobal };
+    incomingRay = msg.absorbed
+      ? null
+      : { originGlobal: msg.originGlobal, directionGlobal: msg.directionGlobal, pathGlobal: msg.pathGlobal };
     runPhysicsAndReportTiming();
   } else if (msg.type === 'geometry-update' && (msg.geometry.id === 'earth' || msg.geometry.id === 'mars')) {
     receiverGeometry[msg.geometry.id] = msg.geometry;

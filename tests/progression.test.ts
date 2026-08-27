@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadProgress, markSolved, isLevelSolved } from '../src/level/progression';
+import { loadProgress, markSolved, isLevelSolved, resetProgress } from '../src/level/progression';
 
 describe('progression', () => {
   beforeEach(() => {
@@ -33,6 +33,14 @@ describe('progression', () => {
 
   it('treats corrupt stored JSON as empty progress rather than throwing', () => {
     localStorage.setItem('lugh_one_progress_v2', '{not json');
+    expect(loadProgress()).toEqual({ highestSolvedLevel: 0, solvedLevelIds: [] });
+  });
+
+  it('resetProgress clears saved completion and returns the first-stage state', () => {
+    markSolved('level01', 0);
+    markSolved('level02', 1);
+
+    expect(resetProgress()).toEqual({ highestSolvedLevel: 0, solvedLevelIds: [] });
     expect(loadProgress()).toEqual({ highestSolvedLevel: 0, solvedLevelIds: [] });
   });
 });
