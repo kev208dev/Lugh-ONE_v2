@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { LEVELS, levelById } from '../src/level/levels/index';
 import { devicesForLevel, type DevicePlacement } from '../src/level/types';
+import { evaluateGoal } from '../src/puzzle/GoalEvaluator';
 
 describe('LEVELS', () => {
   it('has five valid, uniquely identified levels', () => {
@@ -44,5 +45,12 @@ describe('LEVELS', () => {
     expect(devicesForLevel(gravity)).toEqual(
       expect.arrayContaining(['sun', 'blackhole', 'prism', 'earth'])
     );
+  });
+
+  it('accepts 100% on both planets as a solution for the third experiment', () => {
+    const balance = LEVELS[2];
+    expect(balance.id).toBe('balance');
+    expect(balance.goal.receivers.every((receiver) => receiver.maxPower === undefined)).toBe(true);
+    expect(evaluateGoal(balance.goal, { earth: 100, mars: 100 }).satisfied).toBe(true);
   });
 });

@@ -39,7 +39,7 @@ export function computePrismVertices(
  * triangle outline, rotated about its own center, in the canvas's own
  * local coordinate space. Phase 2 only — pure shape rendering, no
  * spectrum/optical physics, no DPR scaling, no blur/filter effects
- * (must stay cheap to redraw on every pointermove during a drag).
+ * (must stay cheap to redraw on every mouse-wheel angle tick).
  */
 export class PrismRenderer {
   private readonly canvas: HTMLCanvasElement;

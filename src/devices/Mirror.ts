@@ -40,7 +40,7 @@ export function computeMirrorSurface(
  * segment, rotated about its own center, in the canvas's own local
  * coordinate space. Pure shape rendering only, no optical physics, no DPR
  * scaling, no blur/filter effects (must stay cheap to redraw on every
- * pointermove during a drag).
+ * mouse-wheel angle tick).
  */
 export class MirrorRenderer {
   private readonly canvas: HTMLCanvasElement;

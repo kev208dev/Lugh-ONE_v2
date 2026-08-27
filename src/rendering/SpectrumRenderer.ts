@@ -12,7 +12,7 @@ import { wavelengthToRgb } from '../optics/Spectrum';
  * `src/devices/Prism.ts`: full-window canvas sized to
  * window.innerWidth/innerHeight (no DPR scaling), re-sized and re-drawn at
  * the last known value on window resize, no shadowBlur/filter effects
- * (must stay cheap to redraw on every pointermove/wheel tick during a fast
+ * (must stay cheap to redraw on every wheel tick during a fast
  * drag).
  */
 export class SpectrumRenderer {
