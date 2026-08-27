@@ -129,7 +129,7 @@ export class SolvedBanner {
   /** Stage 2: replaces stage 1 with the level name + "SOLVED" and a small
    * next/replay affordance. `levelIndex` is 1-based and rendered zero-padded
    * (e.g. 1 -> "01"). */
-  showSolved(levelIndex: number, levelName: string, onNext: () => void, onReplay: () => void): void {
+  showSolved(levelIndex: number, levelName: string, onNext: (() => void) | null, onReplay: () => void): void {
     this.root.classList.add('exp-solved-banner--visible');
     this.stableEl.style.display = 'none';
 
@@ -141,19 +141,21 @@ export class SolvedBanner {
     this.actionsEl.style.display = 'flex';
     this.actionsEl.replaceChildren();
 
-    const nextBtn = document.createElement('button');
-    nextBtn.type = 'button';
-    nextBtn.className = 'exp-solved-banner__btn';
-    nextBtn.textContent = '[ NEXT EXPERIMENT ]';
-    nextBtn.addEventListener('click', onNext);
-
     const replayBtn = document.createElement('button');
     replayBtn.type = 'button';
     replayBtn.className = 'exp-solved-banner__btn';
     replayBtn.textContent = '[ REPLAY ]';
     replayBtn.addEventListener('click', onReplay);
 
-    this.actionsEl.append(nextBtn, replayBtn);
+    if (onNext) {
+      const nextBtn = document.createElement('button');
+      nextBtn.type = 'button';
+      nextBtn.className = 'exp-solved-banner__btn';
+      nextBtn.textContent = '[ NEXT EXPERIMENT ]';
+      nextBtn.addEventListener('click', onNext);
+      this.actionsEl.append(nextBtn);
+    }
+    this.actionsEl.append(replayBtn);
   }
 
   /** Hides everything (e.g. on replay, or leaving SOLVED state). */
