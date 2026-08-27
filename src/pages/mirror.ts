@@ -193,7 +193,7 @@ window.addEventListener('beforeunload', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Rotation input — identical pattern to src/pages/prism.ts: local visual
+// Wheel-only rotation — identical pattern to src/pages/prism.ts: local visual
 // rotation is always synchronous/instant, the bus only carries a coalesced
 // "latest angle" at ~28Hz while actively rotating, plus one immediate final
 // send when the interaction ends.
@@ -206,12 +206,6 @@ function normalizeAngle(deg: number): number {
   let a = deg % 360;
   if (a < 0) a += 360;
   return a;
-}
-
-function pointerAngleDeg(clientX: number, clientY: number): number {
-  const centerX = window.innerWidth / 2;
-  const centerY = window.innerHeight / 2;
-  return (Math.atan2(clientY - centerY, clientX - centerX) * 180) / Math.PI;
 }
 
 function maybeSendCoalesced(): void {
@@ -227,36 +221,6 @@ function sendFinal(): void {
   lastBusSendAt = now;
   bus.send({ type: 'mirror-rotation', angleDeg, timestamp: now });
 }
-
-let isDragging = false;
-let dragStartPointerAngleDeg = 0;
-let dragStartAngleDeg = 0;
-
-window.addEventListener('pointerdown', (e) => {
-  isDragging = true;
-  dragStartPointerAngleDeg = pointerAngleDeg(e.clientX, e.clientY);
-  dragStartAngleDeg = angleDeg;
-});
-
-window.addEventListener('pointermove', (e) => {
-  if (!isDragging) return;
-  const currentPointerAngleDeg = pointerAngleDeg(e.clientX, e.clientY);
-  const delta = currentPointerAngleDeg - dragStartPointerAngleDeg;
-  angleDeg = normalizeAngle(dragStartAngleDeg + delta);
-
-  mirrorRenderer.drawMirror(angleDeg);
-  runPhysicsAndBroadcast();
-  maybeSendCoalesced();
-});
-
-function endDrag(): void {
-  if (!isDragging) return;
-  isDragging = false;
-  sendFinal();
-}
-
-window.addEventListener('pointerup', endDrag);
-window.addEventListener('pointercancel', endDrag);
 
 let wheelIdleTimer: ReturnType<typeof setTimeout> | undefined;
 

@@ -154,7 +154,8 @@ describe('launcher shell', () => {
     const howTo = doc.querySelector<HTMLDetailsElement>('.launcher-howto');
 
     expect(note?.textContent).toContain('태양 창과 프리즘 창만 움직이세요');
-    expect(note?.textContent).toContain('지구와 화성 창은 목표 지점');
+    expect(note?.textContent).toContain('지구와 화성 창은 그대로');
+    expect(note?.textContent).toContain('마우스 휠만');
     expect(howTo?.open).toBe(true);
   });
 });

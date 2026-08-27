@@ -5,7 +5,7 @@ export type TutorialStep = {
   lesson: string;
 };
 
-export const ONBOARDING_STORAGE_KEY = 'lugh-one:onboarding-v2';
+export const ONBOARDING_STORAGE_KEY = 'lugh-one:onboarding-v3';
 
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
@@ -26,8 +26,8 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     eyebrow: '핵심 규칙 03',
     title: '프리즘의 각도를 조절하세요',
     description:
-      '프리즘 창 안쪽을 드래그하거나 마우스 휠을 돌리면 삼각형의 각도가 바뀝니다. 분리된 무지개의 방향을 행성 쪽으로 돌리세요.',
-    lesson: '창의 위치로 큰 경로를 만들고, 프리즘 각도로 마지막 방향을 미세 조정하세요.'
+      '프리즘이나 거울 창 위에서 마우스 휠을 돌리면 장치의 각도가 바뀝니다. 드래그는 각도 조절에 사용하지 않습니다.',
+    lesson: '창의 위치로 큰 경로를 만들고, 마우스 휠로 마지막 방향을 미세 조정하세요.'
   },
   {
     eyebrow: '핵심 규칙 04',
