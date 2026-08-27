@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050606" />
-  <meta name="description" content="A multi-window optical puzzle. Move the instruments and shape the light." />
+  <meta name="description" content="창을 움직여 빛의 경로를 만드는 다중 창 광학 퍼즐" />
   <title>Lugh: ONE</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
@@ -50,64 +50,71 @@
         <span class="launcher-title-lugh">Lugh<span class="launcher-title-colon">:</span></span>
         <span class="launcher-title-one">ONE</span>
       </h1>
-      <p class="launcher-tagline">MOVE THE INSTRUMENTS.<br />SHAPE THE LIGHT.</p>
+      <p class="launcher-tagline">창을 움직이고<br />빛의 길을 만드세요.</p>
 
       <div class="launcher-actions">
         <button id="start-btn" class="launcher-begin-btn" type="button">
-          <span>BEGIN EXPERIMENT</span>
+          <span>실험 시작</span>
         </button>
         <div id="status" class="launcher-status" role="status" aria-live="polite"></div>
       </div>
 
       <div id="error-panel" class="launcher-access-panel" role="alert">
-        <div id="error-title" class="launcher-access-title">WINDOW ACCESS REQUIRED</div>
-        <p class="launcher-access-copy">Lugh: ONE uses movable browser windows as physical instruments.</p>
+        <div id="error-title" class="launcher-access-title">창 열기 권한이 필요합니다</div>
+        <p class="launcher-access-copy">이 게임은 움직일 수 있는 브라우저 창을 광학 장치로 사용합니다.</p>
         <div id="error-message" class="launcher-access-message"></div>
-        <button id="retry-btn" class="launcher-allow-btn" type="button">ALLOW ACCESS</button>
-        <p class="launcher-access-note">POP-UPS AND WINDOW MANAGEMENT ARE REQUIRED.</p>
+        <button id="retry-btn" class="launcher-allow-btn" type="button">권한 허용</button>
+        <p class="launcher-access-note">팝업 및 창 관리 권한이 필요합니다.</p>
       </div>
     </section>
 
     <aside class="launcher-mission" aria-labelledby="active-level-name">
       <div class="launcher-mission-head">
-        <span>ACTIVE EXPERIMENT</span>
-        <span id="progress-label">0 / 5 STABLE</span>
+        <span>현재 실험</span>
+        <span id="progress-label">0 / 5 완료</span>
       </div>
       <div class="launcher-level-heading">
         <span id="active-level-number">01</span>
         <div>
-          <p id="active-level-hint">SEPARATE THE LIGHT</p>
-          <h2 id="active-level-name">Split</h2>
+          <p id="active-level-hint">빛을 나누세요</p>
+          <h2 id="active-level-name">빛 분산</h2>
         </div>
       </div>
       <p id="active-level-description" class="launcher-level-description"></p>
 
+      <div class="launcher-control-note" role="note">
+        <span>핵심 조작</span>
+        <strong>태양 창과 프리즘 창만 움직이세요.</strong>
+        <p>지구와 화성 창은 목표 지점이므로 그대로 두고, 태양과 프리즘을 옮겨 빛이 행성에 닿게 만드세요.</p>
+      </div>
+
       <div class="launcher-mission-block">
-        <span class="launcher-mission-label">INSTRUMENTS</span>
+        <span class="launcher-mission-label">등장 장치</span>
         <div id="device-list" class="launcher-device-list"></div>
       </div>
       <div class="launcher-mission-block">
-        <span class="launcher-mission-label">OBJECTIVE</span>
+        <span class="launcher-mission-label">목표</span>
         <p id="goal-summary" class="launcher-goal-summary"></p>
       </div>
 
-      <nav id="level-nav" class="launcher-level-nav" aria-label="Experiment selection"></nav>
+      <nav id="level-nav" class="launcher-level-nav" aria-label="실험 단계 선택"></nav>
 
-      <details class="launcher-howto">
-        <summary>HOW TO PLAY</summary>
+      <details class="launcher-howto" open>
+        <summary>게임 방법</summary>
         <ol>
-          <li>Allow pop-ups when Chrome asks.</li>
-          <li>Drag the instrument windows around your desktop.</li>
-          <li>Keep every receiver in range until the signal stabilizes.</li>
+          <li>크롬에서 요청하면 팝업을 허용하세요.</li>
+          <li>태양 창과 프리즘 창을 데스크톱 위에서 움직이세요.</li>
+          <li>프리즘 안을 드래그하거나 마우스 휠을 돌려 빛의 각도를 조절하세요.</li>
+          <li>행성의 목표 수치를 맞춘 채 신호가 안정될 때까지 유지하세요.</li>
         </ol>
       </details>
 
-      <button id="tutorial-btn" class="launcher-tutorial-btn" type="button">OPEN FIELD GUIDE</button>
+      <button id="tutorial-btn" class="launcher-tutorial-btn" type="button">게임 안내 다시 보기</button>
     </aside>
   </main>
 
   <footer class="launcher-footer">
-    <span>CHROME DESKTOP<br />WINDOW MANAGEMENT REQUIRED</span>
+    <span>데스크톱용 크롬<br />창 관리 권한 필요</span>
   </footer>
 
   <div id="onboarding" class="onboarding" hidden>
@@ -121,7 +128,7 @@
     >
       <header class="onboarding-header">
         <div>
-          <span class="onboarding-brand">LUGH:ONE / FIELD GUIDE</span>
+          <span class="onboarding-brand">게임 안내</span>
           <span id="onboarding-step-label" class="onboarding-step-label"></span>
         </div>
         <button id="onboarding-skip" class="onboarding-skip" type="button">건너뛰기</button>
@@ -138,20 +145,20 @@
 
       <div class="onboarding-body">
         <div id="onboarding-visual" class="onboarding-visual" data-step="0" aria-hidden="true">
-          <div class="tutorial-desktop-label">YOUR DESKTOP = THE PUZZLE BOARD</div>
+          <div class="tutorial-desktop-label">데스크톱 전체가 퍼즐판입니다</div>
           <div class="tutorial-chain">
-            <div class="tutorial-device tutorial-sun"><strong>SUN</strong><small>WHITE LIGHT</small></div>
+            <div class="tutorial-device tutorial-sun"><strong>태양</strong><small>백색광</small></div>
             <span class="tutorial-link tutorial-link-white"></span>
-            <div class="tutorial-device tutorial-mirror"><strong>MIRROR</strong><small>REDIRECT</small></div>
+            <div class="tutorial-device tutorial-mirror"><strong>거울</strong><small>방향 전환</small></div>
             <span class="tutorial-link tutorial-link-white"></span>
-            <div class="tutorial-device tutorial-prism"><strong>PRISM</strong><small>TOUCH + SPLIT</small></div>
+            <div class="tutorial-device tutorial-prism"><strong>프리즘</strong><small>빛 분산</small></div>
             <span class="tutorial-link tutorial-link-rainbow"></span>
             <div class="tutorial-receivers">
-              <div class="tutorial-device tutorial-earth"><strong>EARTH</strong><small>COOL COLORS</small></div>
-              <div class="tutorial-device tutorial-mars"><strong>MARS</strong><small>WARM COLORS</small></div>
+              <div class="tutorial-device tutorial-earth"><strong>지구</strong><small>차가운 색</small></div>
+              <div class="tutorial-device tutorial-mars"><strong>화성</strong><small>따뜻한 색</small></div>
             </div>
           </div>
-          <div class="tutorial-gesture"><span>↔</span> MOVE WINDOWS TO STEER LIGHT</div>
+          <div class="tutorial-gesture"><span>↔</span> 태양과 프리즘 창을 움직여 빛을 조절하세요</div>
         </div>
 
         <div class="onboarding-copy">
@@ -164,7 +171,7 @@
 
       <footer class="onboarding-footer">
         <button id="onboarding-prev" class="onboarding-prev" type="button">이전</button>
-        <span class="onboarding-key-hint">ESC로 닫기</span>
+        <span class="onboarding-key-hint">취소 키로 닫기</span>
         <button id="onboarding-next" class="onboarding-next" type="button">다음 <span aria-hidden="true">→</span></button>
       </footer>
     </section>

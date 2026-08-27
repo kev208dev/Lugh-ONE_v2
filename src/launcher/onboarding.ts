@@ -5,43 +5,43 @@ export type TutorialStep = {
   lesson: string;
 };
 
-export const ONBOARDING_STORAGE_KEY = 'lugh-one:onboarding-v1';
+export const ONBOARDING_STORAGE_KEY = 'lugh-one:onboarding-v2';
 
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     eyebrow: '핵심 규칙 01',
-    title: '당신의 데스크톱이 퍼즐판입니다',
+    title: '태양과 프리즘 창을 움직이세요',
     description:
-      '각 팝업 창은 SUN, MIRROR, PRISM, 행성 같은 하나의 광학 장치입니다. 창을 옮기면 빛의 실제 경로도 즉시 따라 움직입니다.',
-    lesson: '창을 보는 게임이 아니라, 창 자체를 움직여 푸는 게임입니다.'
+      '처음에는 태양 창과 프리즘 창만 움직이면 됩니다. 지구와 화성 창은 빛을 받아야 하는 목표 지점이므로 원래 위치에 그대로 두세요.',
+    lesson: '태양과 프리즘의 위치를 바꾸어 빛이 프리즘을 통과한 뒤 행성으로 향하게 만드세요.'
   },
   {
     eyebrow: '핵심 규칙 02',
-    title: '빛의 사슬을 끊김 없이 연결하세요',
+    title: '흰빛을 프리즘에 정확히 넣으세요',
     description:
-      'SUN의 백색광을 MIRROR 또는 BLACK HOLE로 꺾어 PRISM까지 전달하세요. 빛이 다음 장치의 창에 닿지 않으면 광학 체인이 끊깁니다.',
-    lesson: 'SUN → 경로 장치 → PRISM → EARTH / MARS 순서로 창을 배치하세요.'
+      '태양에서 나온 흰빛이 프리즘의 삼각형에 닿아야 여러 색으로 갈라집니다. 빛이 창을 스치기만 하면 분광되지 않습니다.',
+    lesson: '태양 창과 프리즘 창을 먼저 옮겨 흰빛이 삼각형을 관통하도록 맞추세요.'
   },
   {
     eyebrow: '핵심 규칙 03',
-    title: '프리즘에 닿아야 무지개가 됩니다',
+    title: '프리즘의 각도를 조절하세요',
     description:
-      '백색광은 PRISM 창을 그냥 통과하지 않습니다. 빛이 프리즘 삼각형에 정확히 닿는 순간 여러 색으로 분리되어 나갑니다.',
-    lesson: 'PRISM 창을 옮기고, 창 안에서 드래그하거나 휠을 돌려 분광 각도를 조절하세요.'
+      '프리즘 창 안쪽을 드래그하거나 마우스 휠을 돌리면 삼각형의 각도가 바뀝니다. 분리된 무지개의 방향을 행성 쪽으로 돌리세요.',
+    lesson: '창의 위치로 큰 경로를 만들고, 프리즘 각도로 마지막 방향을 미세 조정하세요.'
   },
   {
     eyebrow: '핵심 규칙 04',
-    title: '무지개를 두 행성에 나눠 주세요',
+    title: '행성의 목표 수치를 유지하세요',
     description:
-      'PRISM에서 나온 실제 색 띠를 행성에 비추세요. EARTH는 청록 계열, MARS는 주황·적색 계열의 에너지를 더 잘 받습니다.',
-    lesson: '두 행성의 목표 퍼센트를 동시에 맞춘 뒤 약 1.5초 동안 유지하면 안정화됩니다.'
+      '지구와 화성 창에 표시된 빛의 양을 단계 목표에 맞추세요. 목표가 둘이라면 두 행성의 조건을 동시에 만족해야 합니다.',
+    lesson: '목표 수치를 약 1.5초 동안 유지하면 단계가 해결됩니다.'
   },
   {
     eyebrow: '실험 준비 완료',
-    title: '이제 첫 번째 빛을 연결하세요',
+    title: '성공 화면에서 다음 단계를 시작하세요',
     description:
-      'Chrome의 팝업을 허용하고 열린 장치 창을 모두 유지하세요. 후반의 성운은 닿은 빛을 전부 흡수하므로 우회 경로를 만들어야 합니다.',
-    lesson: '성운은 움직일 수 없는 벽입니다. 막히면 R로 레벨을 초기화하세요.'
+      '단계를 해결하면 장치 창이 닫히고 큰 성공 화면이 나타납니다. 다음 단계 시작 버튼을 누르면 새 장치 창이 안전하게 열립니다.',
+    lesson: '막히면 R 키로 현재 단계를 초기화할 수 있습니다.'
   }
 ] as const;
 
@@ -58,7 +58,7 @@ export type OnboardingController = {
 
 function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
   const element = root.querySelector<T>(selector);
-  if (!element) throw new Error(`onboarding: expected ${selector} in index.html`);
+  if (!element) throw new Error(`게임 안내에 필요한 요소가 없습니다: ${selector}`);
   return element;
 }
 
@@ -87,7 +87,7 @@ export function createOnboarding(
     try {
       storage?.setItem(ONBOARDING_STORAGE_KEY, 'seen');
     } catch {
-      // Storage may be unavailable in private or restricted browsing modes.
+      // 저장소를 쓸 수 없어도 게임 안내와 실험은 계속 진행한다.
     }
   }
 

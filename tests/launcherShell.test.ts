@@ -56,11 +56,11 @@ describe('launcher shell', () => {
     expect(doc.body.classList.contains('launcher-page')).toBe(true);
     expect(title?.textContent?.replace(/\s/g, '')).toBe('Lugh:ONE');
     expect(startButton?.type).toBe('button');
-    expect(startButton?.textContent).toContain('BEGIN EXPERIMENT');
+    expect(startButton?.textContent).toContain('실험 시작');
 
     expect(mission).not.toBeNull();
     expect(mission?.querySelector('#active-level-number')?.textContent?.trim()).toBe('01');
-    expect(mission?.querySelector('#active-level-name')?.textContent?.trim()).toBe('Split');
+    expect(mission?.querySelector('#active-level-name')?.textContent?.trim()).toBe('빛 분산');
     expect(mission?.querySelector('#active-level-description')).not.toBeNull();
     expect(mission?.querySelector('#device-list')).not.toBeNull();
     expect(mission?.querySelector('#goal-summary')).not.toBeNull();
@@ -76,7 +76,7 @@ describe('launcher shell', () => {
     const onboarding = doc.querySelector<HTMLElement>('#onboarding');
 
     expect(tutorialButton?.type).toBe('button');
-    expect(tutorialButton?.textContent).toContain('OPEN FIELD GUIDE');
+    expect(tutorialButton?.textContent).toContain('게임 안내 다시 보기');
     expect(tutorialButton?.closest('.launcher-mission')).not.toBeNull();
     expect(onboarding?.hidden).toBe(true);
     expect(onboarding?.querySelector('[role="dialog"]')?.getAttribute('aria-modal')).toBe('true');
@@ -100,7 +100,7 @@ describe('launcher shell', () => {
     expect(optic?.querySelector('svg')).not.toBeNull();
     expect(doc.querySelector('#bg-demo-canvas')).toBeNull();
     expect(idleButtons).toHaveLength(1);
-    expect(hero?.querySelector('#start-btn')?.textContent).toContain('BEGIN EXPERIMENT');
+    expect(hero?.querySelector('#start-btn')?.textContent).toContain('실험 시작');
     expect(doc.querySelector('.launcher-intro')).toBeNull();
     expect(doc.querySelector('.launcher-online')).toBeNull();
   });
@@ -146,5 +146,15 @@ describe('launcher shell', () => {
     expect(declarationFor(rules, '.launcher-actions', 'flex-direction')).toBe('column');
     expect(declarationFor(rules, '.onboarding[hidden]', 'display')).toBe('none');
     expect(appCss).toContain('@media (max-width: 1100px)');
+  });
+
+  it('prominently explains that the player moves the sun and prism windows', () => {
+    const doc = new DOMParser().parseFromString(launcherHtml, 'text/html');
+    const note = doc.querySelector<HTMLElement>('.launcher-control-note');
+    const howTo = doc.querySelector<HTMLDetailsElement>('.launcher-howto');
+
+    expect(note?.textContent).toContain('태양 창과 프리즘 창만 움직이세요');
+    expect(note?.textContent).toContain('지구와 화성 창은 목표 지점');
+    expect(howTo?.open).toBe(true);
   });
 });

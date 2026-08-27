@@ -255,7 +255,7 @@ body.launcher-page {
   margin: 1.9rem 0 0;
   font-size: clamp(0.82rem, 1.2vw, 1rem);
   font-weight: 620;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.08em;
   line-height: 1.75;
   color: rgba(242, 245, 251, 0.78);
 }
@@ -458,6 +458,37 @@ body.launcher-page {
   color: rgba(232, 236, 244, 0.74);
   font-size: 0.84rem;
   line-height: 1.7;
+}
+
+.launcher-control-note {
+  display: grid;
+  gap: 0.38rem;
+  margin: 0 0 1.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(127, 184, 255, 0.28);
+  border-left: 3px solid rgba(127, 184, 255, 0.78);
+  border-radius: 0.25rem;
+  background: rgba(127, 184, 255, 0.07);
+}
+
+.launcher-control-note span {
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.launcher-control-note strong {
+  color: rgba(242, 245, 251, 0.96);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.launcher-control-note p {
+  margin: 0;
+  color: rgba(232, 236, 244, 0.68);
+  font-size: 0.74rem;
+  line-height: 1.65;
 }
 
 .launcher-mission-block {

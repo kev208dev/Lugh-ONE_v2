@@ -6,7 +6,7 @@ describe('launcher solved sequence', () => {
     vi.useRealTimers();
   });
 
-  it('automatically advances experiment 3 to the black-hole experiment 4', () => {
+  it('reveals experiment 4 without opening its popup windows from a timer', () => {
     vi.useFakeTimers();
     const onReveal = vi.fn();
     const onAdvance = vi.fn();
@@ -16,19 +16,17 @@ describe('launcher solved sequence', () => {
       levelCount: 5,
       onReveal,
       onAdvance,
-      revealDelayMs: 1700,
-      autoAdvanceDelayMs: 1400
+      revealDelayMs: 700
     });
 
-    vi.advanceTimersByTime(1699);
+    vi.advanceTimersByTime(699);
     expect(onReveal).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(onReveal).toHaveBeenCalledWith(3, expect.any(Function));
     expect(onAdvance).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1400);
-    expect(onAdvance).toHaveBeenCalledTimes(1);
-    expect(onAdvance).toHaveBeenCalledWith(3);
+    vi.advanceTimersByTime(10_000);
+    expect(onAdvance).not.toHaveBeenCalled();
   });
 
   it('lets NEXT advance immediately and never auto-wraps the final experiment', () => {
@@ -43,8 +41,7 @@ describe('launcher solved sequence', () => {
         manualAdvance = advance;
       },
       onAdvance,
-      revealDelayMs: 10,
-      autoAdvanceDelayMs: 10
+      revealDelayMs: 10
     });
     vi.advanceTimersByTime(10);
     manualAdvance?.();
@@ -59,8 +56,7 @@ describe('launcher solved sequence', () => {
       levelCount: 5,
       onReveal: finalReveal,
       onAdvance: finalAdvance,
-      revealDelayMs: 10,
-      autoAdvanceDelayMs: 10
+      revealDelayMs: 10
     });
     vi.runAllTimers();
     expect(finalReveal).toHaveBeenCalledWith(null, expect.any(Function));

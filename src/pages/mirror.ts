@@ -102,7 +102,7 @@ const RAY_TEST_DISTANCE = 1_000_000;
  */
 function runPhysicsAndBroadcast(): void {
   if (!otherGeometry || !selfGeometry) {
-    if (physicsHud) physicsHud.textContent = 'mirror: waiting for geometry…';
+    if (physicsHud) physicsHud.textContent = '빛의 위치를 기다리는 중…';
     outgoingRenderer.clear();
     return;
   }
@@ -121,7 +121,7 @@ function runPhysicsAndBroadcast(): void {
         directionGlobal: { x: 0, y: 0 },
         absorbed: true
       });
-      if (physicsHud) physicsHud.textContent = 'mirror: BLOCKED BY NEBULA';
+      if (physicsHud) physicsHud.textContent = '성운이 빛을 흡수했습니다';
       return;
     }
 
@@ -152,10 +152,10 @@ function runPhysicsAndBroadcast(): void {
     bus.send({ type: 'ray-state', from: 'mirror', originGlobal, directionGlobal: outgoingDirLocal, absorbed: false });
 
     if (physicsHud) {
-      physicsHud.textContent = result.hit ? 'mirror: HIT — reflecting' : 'mirror: MISS — pass-through';
+      physicsHud.textContent = result.hit ? '거울에 닿음 · 빛 반사 중' : '거울을 빗나감 · 그대로 통과';
     }
   } catch (err) {
-    if (physicsHud) physicsHud.textContent = `mirror: ERROR — ${String(err)}`;
+    if (physicsHud) physicsHud.textContent = `거울 계산 오류 · ${String(err)}`;
     outgoingRenderer.clear();
     console.error('[mirror physics]', err);
   }

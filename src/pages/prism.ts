@@ -285,7 +285,7 @@ function runPhysicsAndReportTiming(): void {
   if (!physicsHud) return;
 
   if (!selfGeometry || incomingRay === undefined) {
-    physicsHud.textContent = `physics: waiting for ${upstreamId}…`;
+    physicsHud.textContent = '이전 장치에서 오는 빛을 기다리는 중…';
     renderer.clear();
     spectrumRenderer.clear();
     if (selfGeometry) broadcastLevelState(0, 0, windowRectGlobalCenter(selfGeometry), null, null);
@@ -294,7 +294,7 @@ function runPhysicsAndReportTiming(): void {
   }
 
   if (incomingRay === null) {
-    physicsHud.textContent = 'physics: no incoming light';
+    physicsHud.textContent = '들어오는 빛이 없습니다';
     renderer.clear();
     spectrumRenderer.clear();
     broadcastLevelState(0, 0, windowRectGlobalCenter(selfGeometry), null, null);
@@ -315,8 +315,8 @@ function runPhysicsAndReportTiming(): void {
 
     const total = sampleWavelengths().length;
     physicsHud.textContent = trace.entryPoint
-      ? `physics: HIT · spectrum ${rays.length}/${total} · ${elapsedMs.toFixed(2)}ms`
-      : `physics: MISS · white light · ${elapsedMs.toFixed(2)}ms`;
+      ? `프리즘 통과 · 분광 ${rays.length}/${total} · ${elapsedMs.toFixed(2)}밀리초`
+      : `프리즘을 빗나감 · 흰빛 유지 · ${elapsedMs.toFixed(2)}밀리초`;
 
     renderIncoming(trace.entryPoint);
     spectrumRenderer.drawFan(buildSpectrumFan(rays), rays);
@@ -335,7 +335,7 @@ function runPhysicsAndReportTiming(): void {
     }
     broadcastLevelState(earthPercent, marsPercent, localToGlobal(apexLocal, selfGeometry), earthResult.beam, marsResult.beam);
   } catch (err) {
-    physicsHud.textContent = `physics: ERROR — ${String(err)}`;
+    physicsHud.textContent = `계산 오류 · ${String(err)}`;
     renderer.clear();
     spectrumRenderer.clear();
     console.error('[prism physics]', err);
