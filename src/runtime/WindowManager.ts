@@ -1,4 +1,4 @@
-import { DEVICE_IDS, popupNameFor, type DeviceId } from './types';
+import { DEVICE_IDS, isNebulaDeviceId, popupNameFor, type DeviceId } from './types';
 import { DEVICE_LAYOUTS, computeWorkArea, resolveWindowFeatures, resolveDeviceLayoutsForLevel } from './screenLayout';
 import type { LevelDefinition } from '../level/types';
 
@@ -6,19 +6,25 @@ export type LaunchResult =
   | { ok: true; windows: Record<DeviceId, Window> }
   | { ok: false; error: string };
 
-const DEVICE_LABELS: Record<DeviceId, string> = {
+const DEVICE_LABELS = {
   sun: 'SUN',
   prism: 'PRISM',
   earth: 'EARTH',
   mars: 'MARS',
   mirror: 'MIRROR',
   blackhole: 'BLACKHOLE'
-};
+} as const;
+
+function deviceLabel(id: DeviceId): string {
+  return isNebulaDeviceId(id) ? 'NEBULA' : DEVICE_LABELS[id];
+}
 
 function urlFor(id: DeviceId, sessionId: string, levelId: string | undefined): string {
   const params = new URLSearchParams({ session: sessionId });
   if (levelId) params.set('level', levelId);
-  return `${import.meta.env.BASE_URL}${id}.html?${params.toString()}`;
+  if (isNebulaDeviceId(id)) params.set('device', id);
+  const page = isNebulaDeviceId(id) ? 'nebula' : id;
+  return `${import.meta.env.BASE_URL}${page}.html?${params.toString()}`;
 }
 
 function featuresString(rect: { left: number; top: number; width: number; height: number }): string {
@@ -74,7 +80,7 @@ export class WindowManager {
 
       if (!win) {
         this.closeOpened(opened);
-        return { ok: false, error: `팝업이 차단되어 열리지 않았습니다: ${DEVICE_LABELS[id]}` };
+        return { ok: false, error: `팝업이 차단되어 열리지 않았습니다: ${deviceLabel(id)}` };
       }
 
       opened.set(id, win);

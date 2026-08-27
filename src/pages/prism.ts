@@ -1,10 +1,9 @@
-import type { ReceiverBeam, SpectralBeamBand, WindowGeometry } from '../runtime/types';
+import { isNebulaDeviceId, type NebulaDeviceId, type ReceiverBeam, type SpectralBeamBand, type WindowGeometry } from '../runtime/types';
 import { createMessageBus } from '../runtime/MessageBus';
 import { bootstrapDevicePage } from './deviceBootstrap';
 import { LightRenderer } from '../rendering/LightRenderer';
 import { windowRectGlobal, globalToLocal, localToGlobal } from '../runtime/globalCoords';
-import { clipSegmentToRect, segmentIntersectsCircle, type Point } from '../optics/Ray';
-import { computeWorkArea } from '../runtime/screenLayout';
+import { clipSegmentToRect, type Point } from '../optics/Ray';
 import { PrismRenderer, computePrismVertices } from '../devices/Prism';
 import { tracePrismInteraction, type SpectralRay } from '../optics/PrismPhysics';
 import { sampleWavelengths, wavelengthToRgb } from '../optics/Spectrum';
@@ -17,6 +16,7 @@ import { currentLevel } from '../level/session';
 import { resolveUpstream } from '../level/types';
 import { evaluateGoal } from '../puzzle/GoalEvaluator';
 import { PuzzleStateMachine } from '../puzzle/PuzzleStateMachine';
+import { nebulaCircleFromGeometry, traceNebulaAbsorption } from '../optics/NebulaOcclusion';
 
 // See src/pages/blackhole.ts's identical comment: a level that skips
 // straight from SUN (no MIRROR or BLACKHOLE) routes PRISM directly to SUN's
@@ -25,34 +25,55 @@ import { PuzzleStateMachine } from '../puzzle/PuzzleStateMachine';
 const level = currentLevel();
 const upstreamId = level ? resolveUpstream('prism', level) : 'blackhole';
 
-/** Level05-style attenuation zones, converted from the level's percentage-
- * of-work-area authoring space into global pixel circles once at startup
- * (the work area doesn't change mid-session — same one-shot assumption
- * WindowManager already makes when laying out popups). Empty for any level
- * without nebulae, or when opened outside the level flow entirely. */
-let nebulaCirclesGlobal: Array<{ center: Point; radiusPx: number; attenuation: number }> = [];
-if (level?.nebulae?.length) {
-  void computeWorkArea().then((workArea) => {
-    const scale = Math.min(workArea.width, workArea.height);
-    nebulaCirclesGlobal = level.nebulae!.map((n) => ({
-      center: { x: workArea.left + n.xPct * workArea.width, y: workArea.top + n.yPct * workArea.height },
-      radiusPx: n.radiusPct * scale,
-      attenuation: n.attenuation
-    }));
-    runPhysicsAndReportTiming();
+const nebulaConfigs = level?.nebulae ?? [];
+const nebulaGeometry = new Map<NebulaDeviceId, WindowGeometry>();
+
+interface NebulaLight {
+  energy: number;
+  red: number;
+  green: number;
+  blue: number;
+}
+
+type NebulaLightMap = Map<NebulaDeviceId, NebulaLight>;
+
+function currentNebulaCircles() {
+  return nebulaConfigs.flatMap((config) => {
+    const geometry = nebulaGeometry.get(config.id);
+    return geometry ? [nebulaCircleFromGeometry(config, geometry)] : [];
   });
 }
 
-/** 1 for a ray whose exit segment doesn't cross any nebula zone; otherwise
- * the product of (1 - attenuation) for every zone it does cross. */
-function nebulaAttenuationFactor(p1: Point, p2: Point): number {
-  let factor = 1;
-  for (const zone of nebulaCirclesGlobal) {
-    if (segmentIntersectsCircle(p1, p2, zone.center, zone.radiusPx)) {
-      factor *= 1 - zone.attenuation;
-    }
+function recordNebulaLight(
+  hits: NebulaLightMap,
+  id: NebulaDeviceId,
+  absorbedIntensity: number,
+  rgb: { r: number; g: number; b: number }
+): void {
+  const current = hits.get(id) ?? { energy: 0, red: 0, green: 0, blue: 0 };
+  current.energy += absorbedIntensity;
+  current.red += rgb.r * absorbedIntensity;
+  current.green += rgb.g * absorbedIntensity;
+  current.blue += rgb.b * absorbedIntensity;
+  hits.set(id, current);
+}
+
+function broadcastNebulaLight(hits: NebulaLightMap): void {
+  const normalizer = Math.max(1, sampleWavelengths().length);
+  for (const config of nebulaConfigs) {
+    const light = hits.get(config.id);
+    const weight = light?.energy ?? 0;
+    const color = weight > 0
+      ? `rgb(${Math.round(light!.red / weight)},${Math.round(light!.green / weight)},${Math.round(light!.blue / weight)})`
+      : 'rgb(190,220,255)';
+    bus.send({
+      type: 'nebula-state',
+      id: config.id,
+      source: 'prism',
+      intensity: Math.min(1, weight / normalizer),
+      color
+    });
   }
-  return factor;
 }
 
 // ---------------------------------------------------------------------------
@@ -101,7 +122,12 @@ interface ReceiverResult {
   beam: ReceiverBeam | null;
 }
 
-function powerAtReceiver(rays: SpectralRay[], receiverId: ReceiverId, geometry: WindowGeometry | undefined): ReceiverResult {
+function powerAtReceiver(
+  rays: SpectralRay[],
+  receiverId: ReceiverId,
+  geometry: WindowGeometry | undefined,
+  nebulaHits: NebulaLightMap
+): ReceiverResult {
   if (!geometry || !selfGeometry) return { power: 0, beam: null };
   const rect = windowRectGlobal(geometry);
   let power = 0;
@@ -121,15 +147,14 @@ function powerAtReceiver(rays: SpectralRay[], receiverId: ReceiverId, geometry: 
     const clipped = clipSegmentToRect(p1, p2, rect);
     if (!clipped) continue;
 
-    // Nebula attenuation is evaluated over the visible segment from where
-    // the ray leaves the prism to where it actually enters the receiver's
-    // window (not the full 1,000,000px test ray) — a zone the beam passes
-    // through anywhere along that real path dims it.
-    const attenuation = nebulaAttenuationFactor(p1, clipped[0]);
-    const physicalIntensity = ray.intensity * attenuation;
+    const { r, g, b } = wavelengthToRgb(ray.wavelengthNm);
+    const absorption = traceNebulaAbsorption(p1, clipped[0], ray.intensity, currentNebulaCircles());
+    for (const hit of absorption.hits) {
+      recordNebulaLight(nebulaHits, hit.id, hit.absorbedIntensity, { r, g, b });
+    }
+    const physicalIntensity = absorption.transmittedIntensity;
     if (physicalIntensity <= 0) continue;
 
-    const { r, g, b } = wavelengthToRgb(ray.wavelengthNm);
     const color = `rgb(${r},${g},${b})`;
     bands.push({
       wavelengthNm: ray.wavelengthNm,
@@ -263,6 +288,7 @@ function runPhysicsAndReportTiming(): void {
     renderer.clear();
     spectrumRenderer.clear();
     if (selfGeometry) broadcastLevelState(0, 0, windowRectGlobalCenter(selfGeometry), null, null);
+    broadcastNebulaLight(new Map());
     return;
   }
 
@@ -271,6 +297,7 @@ function runPhysicsAndReportTiming(): void {
     renderer.clear();
     spectrumRenderer.clear();
     broadcastLevelState(0, 0, windowRectGlobalCenter(selfGeometry), null, null);
+    broadcastNebulaLight(new Map());
     return;
   }
 
@@ -293,8 +320,10 @@ function runPhysicsAndReportTiming(): void {
     renderIncoming(trace.entryPoint);
     spectrumRenderer.drawFan(buildSpectrumFan(rays), rays);
 
-    const earthResult = powerAtReceiver(rays, 'earth', receiverGeometry.earth);
-    const marsResult = powerAtReceiver(rays, 'mars', receiverGeometry.mars);
+    const nebulaHits: NebulaLightMap = new Map();
+    const earthResult = powerAtReceiver(rays, 'earth', receiverGeometry.earth, nebulaHits);
+    const marsResult = powerAtReceiver(rays, 'mars', receiverGeometry.mars, nebulaHits);
+    broadcastNebulaLight(nebulaHits);
     const earthPercent = (100 * earthResult.power) / receiverMaxResponseSum('earth');
     const marsPercent = (100 * marsResult.power) / receiverMaxResponseSum('mars');
 
@@ -310,6 +339,7 @@ function runPhysicsAndReportTiming(): void {
     spectrumRenderer.clear();
     console.error('[prism physics]', err);
     broadcastLevelState(0, 0, windowRectGlobalCenter(selfGeometry), null, null);
+    broadcastNebulaLight(new Map());
   }
 }
 
@@ -371,6 +401,10 @@ bus.subscribe((msg) => {
     runPhysicsAndReportTiming();
   } else if (msg.type === 'geometry-update' && (msg.geometry.id === 'earth' || msg.geometry.id === 'mars')) {
     receiverGeometry[msg.geometry.id] = msg.geometry;
+    runPhysicsAndReportTiming();
+  } else if (msg.type === 'geometry-update' && isNebulaDeviceId(msg.geometry.id)) {
+    if (!nebulaConfigs.some((config) => config.id === msg.geometry.id)) return;
+    nebulaGeometry.set(msg.geometry.id, msg.geometry);
     runPhysicsAndReportTiming();
   }
 });

@@ -1,4 +1,4 @@
-import type { WindowGeometry } from '../runtime/types';
+import { isNebulaDeviceId, type NebulaDeviceId, type WindowGeometry } from '../runtime/types';
 import { createMessageBus } from '../runtime/MessageBus';
 import { bootstrapDevicePage } from './deviceBootstrap';
 import { LightRenderer } from '../rendering/LightRenderer';
@@ -6,6 +6,8 @@ import { centerGlobal, windowRectGlobal, globalToLocal, localToGlobal } from '..
 import { clipSegmentToRect } from '../optics/Ray';
 import { MirrorRenderer, computeMirrorSurface } from '../devices/Mirror';
 import { reflectRay } from '../optics/MirrorPhysics';
+import { currentLevel } from '../level/session';
+import { nebulaCircleFromGeometry, traceNebulaAbsorption } from '../optics/NebulaOcclusion';
 
 // ---------------------------------------------------------------------------
 // ORDERING: bootstrapDevicePage() (called further below) starts this
@@ -24,6 +26,9 @@ import { reflectRay } from '../optics/MirrorPhysics';
 
 const sessionId = new URLSearchParams(location.search).get('session') ?? 'lugh-v2-default-session';
 const bus = createMessageBus(sessionId);
+const level = currentLevel();
+const nebulaConfigs = level?.nebulae ?? [];
+const nebulaGeometry = new Map<NebulaDeviceId, WindowGeometry>();
 
 const canvas = document.getElementById('ray-canvas') as HTMLCanvasElement;
 const renderer = new LightRenderer(canvas); // incoming ray, SUN -> MIRROR
@@ -40,8 +45,35 @@ let selfGeometry: WindowGeometry | undefined;
 let otherGeometry: WindowGeometry | undefined; // sun
 let angleDeg = 0;
 
+function traceIncomingNebulae() {
+  if (!selfGeometry || !otherGeometry) return null;
+  const circles = nebulaConfigs.flatMap((config) => {
+    const geometry = nebulaGeometry.get(config.id);
+    return geometry ? [nebulaCircleFromGeometry(config, geometry)] : [];
+  });
+  return traceNebulaAbsorption(centerGlobal(otherGeometry), centerGlobal(selfGeometry), 1, circles);
+}
+
+function broadcastNebulaLight(trace: ReturnType<typeof traceIncomingNebulae>): void {
+  for (const config of nebulaConfigs) {
+    const hit = trace?.hits.find((candidate) => candidate.id === config.id);
+    bus.send({
+      type: 'nebula-state',
+      id: config.id,
+      source: 'mirror',
+      intensity: hit?.absorbedIntensity ?? 0,
+      color: 'rgb(255,244,214)'
+    });
+  }
+}
+
 function renderIncoming(): void {
   if (!selfGeometry || !otherGeometry) {
+    renderer.clear();
+    return;
+  }
+  const nebulaTrace = traceIncomingNebulae();
+  if (nebulaTrace && nebulaTrace.transmittedIntensity <= 0) {
     renderer.clear();
     return;
   }
@@ -76,6 +108,23 @@ function runPhysicsAndBroadcast(): void {
   }
 
   try {
+    const nebulaTrace = traceIncomingNebulae();
+    broadcastNebulaLight(nebulaTrace);
+    if (nebulaTrace && nebulaTrace.transmittedIntensity <= 0) {
+      const hit = nebulaTrace.hits[0];
+      renderer.clear();
+      outgoingRenderer.clear();
+      bus.send({
+        type: 'ray-state',
+        from: 'mirror',
+        originGlobal: hit?.point ?? centerGlobal(otherGeometry),
+        directionGlobal: { x: 0, y: 0 },
+        absorbed: true
+      });
+      if (physicsHud) physicsHud.textContent = 'mirror: BLOCKED BY NEBULA';
+      return;
+    }
+
     const originLocal = globalToLocal(centerGlobal(otherGeometry), selfGeometry);
     const targetLocal = { x: selfGeometry.innerWidth / 2, y: selfGeometry.innerHeight / 2 };
     const dir = { x: targetLocal.x - originLocal.x, y: targetLocal.y - originLocal.y };
@@ -127,6 +176,13 @@ bootstrapDevicePage('mirror', {
 bus.subscribe((msg) => {
   if (msg.type === 'geometry-update' && msg.geometry.id === 'sun') {
     otherGeometry = msg.geometry;
+    renderIncoming();
+    runPhysicsAndBroadcast();
+    return;
+  }
+  if (msg.type === 'geometry-update' && isNebulaDeviceId(msg.geometry.id)) {
+    if (!nebulaConfigs.some((config) => config.id === msg.geometry.id)) return;
+    nebulaGeometry.set(msg.geometry.id, msg.geometry);
     renderIncoming();
     runPhysicsAndBroadcast();
   }

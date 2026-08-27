@@ -1175,6 +1175,30 @@ body.launcher-page.onboarding-open {
   }
 }
 
+.nebula-page {
+  background: #070812;
+  cursor: not-allowed;
+}
+
+.nebula-page .device-label {
+  color: rgba(218, 210, 238, 0.62);
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+}
+
+.nebula-power {
+  color: rgba(190, 203, 224, 0.45);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  transition: color 120ms ease, text-shadow 120ms ease;
+}
+
+.nebula-page.is-absorbing .nebula-power {
+  color: rgba(235, 243, 255, 0.9);
+  text-shadow: 0 0 1rem rgba(180, 208, 255, 0.68);
+}
+
 /* ---------------------------------------------------------------------
  * Launcher V2 — restrained editorial entry. This final scoped layer keeps
  * the mission/tutorial DOM available after launch while the first frame is

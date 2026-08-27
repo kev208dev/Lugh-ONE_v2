@@ -1,3 +1,5 @@
+import blackHoleImageUrl from '../assets/blackhole.png';
+
 /**
  * Thin wrapper around a full-window <canvas> that draws a static black hole:
  * an outer accretion-glow, a thin bright photon ring, and a solid near-black
@@ -12,12 +14,16 @@
 export class BlackHoleRenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
+  private readonly image: HTMLImageElement;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('BlackHoleRenderer: 2d context unavailable');
     this.ctx = ctx;
+    this.image = new Image();
+    this.image.addEventListener('load', () => this.draw());
+    this.image.src = blackHoleImageUrl;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -38,7 +44,17 @@ export class BlackHoleRenderer {
     const cy = canvas.height / 2;
     const horizonR = Math.min(canvas.width, canvas.height) * 0.1;
 
-    // Outer accretion-glow, painted first so the dark disc sits on top.
+    if (this.image.complete && this.image.naturalWidth > 0) {
+      const maxWidth = canvas.width * 0.94;
+      const maxHeight = canvas.height * 0.72;
+      const scale = Math.min(maxWidth / this.image.naturalWidth, maxHeight / this.image.naturalHeight);
+      const width = this.image.naturalWidth * scale;
+      const height = this.image.naturalHeight * scale;
+      ctx.drawImage(this.image, cx - width / 2, cy - height / 2, width, height);
+      return;
+    }
+
+    // Loading fallback, replaced by the supplied PNG once decoded.
     const glowGradient = ctx.createRadialGradient(
       cx,
       cy,

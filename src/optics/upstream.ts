@@ -26,3 +26,19 @@ export function straightRayFromSun(
   const directionGlobal = normalize(sub(centerGlobal(selfGeometry), originGlobal));
   return { originGlobal, directionGlobal };
 }
+
+/** A star emits parallel light; a black hole should bend that free ray based
+ * on how close its movable window is to the beam. A center-targeted ray
+ * would always pass through the event horizon and make deflection
+ * impossible, which is why BLACKHOLE uses this variant. */
+export function parallelRayFromSun(
+  sunGeometry: WindowGeometry,
+  downstreamGeometry: WindowGeometry
+): { originGlobal: Point; directionGlobal: Point } {
+  const originGlobal = centerGlobal(sunGeometry);
+  const downstream = centerGlobal(downstreamGeometry);
+  return {
+    originGlobal,
+    directionGlobal: { x: downstream.x >= originGlobal.x ? 1 : -1, y: 0 }
+  };
+}

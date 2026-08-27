@@ -1,4 +1,4 @@
-import type { DeviceId } from '../runtime/types';
+import type { DeviceId, NebulaDeviceId } from '../runtime/types';
 
 // ---------------------------------------------------------------------------
 // Shared puzzle/level contracts. This file is the single source of truth for
@@ -61,10 +61,12 @@ export interface ReceiverConfig {
  * evaluated as a pure geometric+intensity concern inside PRISM's existing
  * power calculation, no new physics module needed. */
 export interface NebulaConfig {
+  id: NebulaDeviceId;
   xPct: number;
   yPct: number;
-  /** radius as a fraction of the work area's smaller dimension. */
-  radiusPct: number;
+  /** Fixed popup size in CSS pixels. The visible cloud and collision circle
+   * both scale from the popup's actual inner dimensions. */
+  sizePx: number;
   /** 0..1 — fraction of intensity REMOVED for a ray crossing this zone. */
   attenuation: number;
 }
@@ -108,7 +110,12 @@ export const CANON_CHAIN_ORDER: DeviceId[] = ['sun', 'mirror', 'blackhole', 'pri
 /** Every device this level opens: sun + its instruments + its receivers,
  * deduplicated, in no particular order. */
 export function devicesForLevel(level: LevelDefinition): DeviceId[] {
-  const set = new Set<DeviceId>(['sun', ...level.requiredDevices, ...level.receivers.map((r) => r.id)]);
+  const set = new Set<DeviceId>([
+    'sun',
+    ...level.requiredDevices,
+    ...level.receivers.map((r) => r.id),
+    ...(level.nebulae?.map((nebula) => nebula.id) ?? [])
+  ]);
   return Array.from(set);
 }
 

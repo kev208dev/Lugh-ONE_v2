@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { LEVELS, levelById } from '../src/level/levels/index';
-import type { DevicePlacement } from '../src/level/types';
+import { devicesForLevel, type DevicePlacement } from '../src/level/types';
 
 describe('LEVELS', () => {
   it('has five valid, uniquely identified levels', () => {
@@ -27,5 +27,13 @@ describe('LEVELS', () => {
   it('looks levels up by id', () => {
     for (const level of LEVELS) expect(levelById(level.id)).toBe(level);
     expect(levelById('not-a-real-level')).toBeUndefined();
+  });
+
+  it('opens unique full-absorption nebula windows for the veil level', () => {
+    const veil = levelById('veil')!;
+    expect(veil.nebulae).toHaveLength(2);
+    expect(new Set(veil.nebulae?.map((nebula) => nebula.id)).size).toBe(2);
+    expect(veil.nebulae?.every((nebula) => nebula.attenuation === 1)).toBe(true);
+    expect(devicesForLevel(veil)).toEqual(expect.arrayContaining(['nebula-1', 'nebula-2']));
   });
 });

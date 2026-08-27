@@ -1,3 +1,5 @@
+import sunImageUrl from '../assets/sun.png';
+
 /**
  * Thin wrapper around a full-window <canvas> that draws a static sun disc
  * with a soft outer glow. Sun has no dynamic state (no rotation, no
@@ -8,12 +10,16 @@
 export class SunRenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
+  private readonly image: HTMLImageElement;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('SunRenderer: 2d context unavailable');
     this.ctx = ctx;
+    this.image = new Image();
+    this.image.addEventListener('load', () => this.draw());
+    this.image.src = sunImageUrl;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -53,8 +59,14 @@ export class SunRenderer {
     ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Solid sun disc, with the inner gradient origin offset slightly
-    // up-left for a subtle lit-sphere look.
+    if (this.image.complete && this.image.naturalWidth > 0) {
+      const size = Math.min(canvas.width, canvas.height) * 0.72;
+      ctx.drawImage(this.image, cx - size / 2, cy - size / 2, size, size);
+      return;
+    }
+
+    // Loading fallback: the real PNG replaces this disc as soon as its
+    // decoded pixels are available.
     const discGradient = ctx.createRadialGradient(
       cx - radius * 0.25,
       cy - radius * 0.25,
