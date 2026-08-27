@@ -36,6 +36,18 @@ function wrapDelta(fromAngle: number, toAngle: number): number {
 export function buildSpectrumFan(rays: SpectralRay[]): SpectrumFan | null {
   if (rays.length < 2) return null;
 
+  // After wavelength-dependent TIR, different colors can physically leave
+  // through different prism faces. A single filled wedge would connect those
+  // unrelated exit groups and imply light where no simulated ray exists.
+  // SpectrumRenderer still draws every real outgoing ray independently.
+  const knownExitEdges = rays.map((ray) => ray.exitEdgeIndex);
+  if (
+    knownExitEdges.every((edgeIndex): edgeIndex is number => edgeIndex !== undefined) &&
+    new Set(knownExitEdges).size > 1
+  ) {
+    return null;
+  }
+
   // apex: mean of all exitPoints.
   let sumX = 0;
   let sumY = 0;

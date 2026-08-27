@@ -31,6 +31,15 @@ describe('buildSpectrumFan', () => {
     expect(buildSpectrumFan(rays)).toBeNull();
   });
 
+  it('does not invent one filled fan across wavelengths that exit different prism faces', () => {
+    const first = makeRay(400, -20, { x: 40, y: 10 });
+    const second = makeRay(700, 35, { x: 80, y: 50 });
+    first.exitEdgeIndex = 0;
+    second.exitEdgeIndex = 2;
+
+    expect(buildSpectrumFan([first, second])).toBeNull();
+  });
+
   it('builds a normal fan for a smoothly-varying, non-wraparound set of angles', () => {
     const wavelengths = [400, 450, 500, 550, 600];
     const angles = [10, 10.75, 11.5, 12.25, 13]; // ascending, ascending wavelength order

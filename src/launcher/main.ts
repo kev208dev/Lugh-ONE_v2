@@ -1,6 +1,5 @@
 import { WindowManager } from '../runtime/WindowManager';
 import { requestWindowManagementPermissionInBackground } from '../runtime/screenLayout';
-import { LauncherBackgroundDemo } from './backgroundDemo';
 import { LEVELS } from '../level/levels';
 import { loadProgress, markSolved } from '../level/progression';
 import { createMessageBus } from '../runtime/MessageBus';
@@ -9,12 +8,7 @@ import { SolvedBanner } from '../rendering/SolvedBanner';
 import { devicesForLevel, type PuzzleState } from '../level/types';
 import { createOnboarding } from './onboarding';
 
-// Decorative only — never allowed to block or fail the real launch flow, so
-// it's wired up independently of the critical-element guard below.
-const bgCanvas = document.querySelector<HTMLCanvasElement>('#bg-demo-canvas');
-if (bgCanvas) {
-  new LauncherBackgroundDemo(bgCanvas).start();
-}
+const LAUNCH_TRANSITION_MS = 820;
 
 const startBtnQ = document.querySelector<HTMLButtonElement>('#start-btn');
 const statusElQ = document.querySelector<HTMLDivElement>('#status');
@@ -172,11 +166,38 @@ function setStatus(text: string): void {
 function showError(message: string): void {
   errorMessageEl.textContent = message;
   errorPanel.classList.add('visible');
+  document.body.classList.add('access-required');
 }
 
 function hideError(): void {
   errorPanel.classList.remove('visible');
   errorMessageEl.textContent = '';
+  document.body.classList.remove('access-required');
+}
+
+function beginLaunchTransition(): number {
+  document.body.classList.add('is-launching');
+  startBtn.setAttribute('aria-busy', 'true');
+  return performance.now();
+}
+
+async function finishLaunchTransition(startedAt: number): Promise<void> {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const remaining = (reduceMotion ? 0 : LAUNCH_TRANSITION_MS) - (performance.now() - startedAt);
+  if (remaining > 0) {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
+  }
+  document.body.classList.remove('is-launching');
+  startBtn.removeAttribute('aria-busy');
+}
+
+async function showLaunchError(message: string, startedAt: number): Promise<void> {
+  await finishLaunchTransition(startedAt);
+  document.body.classList.remove('experiment-active');
+  setStatus('');
+  showError(message);
+  startBtn.disabled = false;
+  retryBtn.focus({ preventScroll: true });
 }
 
 function isChromiumFamily(): boolean {
@@ -209,6 +230,7 @@ function testPopupCapability(): boolean {
 
 async function runLaunchFlow(): Promise<void> {
   hideError();
+  const transitionStartedAt = beginLaunchTransition();
   solvedBanner.hide();
   if (solvedBannerTimer !== undefined) clearTimeout(solvedBannerTimer);
   solvedBannerTimer = undefined;
@@ -221,13 +243,11 @@ async function runLaunchFlow(): Promise<void> {
   startBtn.disabled = true;
 
   if (!isChromiumFamily()) {
-    setStatus('');
-    showError('이 실험은 Chrome(또는 Chromium 기반) 브라우저에서만 동작합니다.');
-    startBtn.disabled = false;
+    await showLaunchError('This experiment requires Chrome on desktop.', transitionStartedAt);
     return;
   }
 
-  setStatus('CALIBRATING...');
+  setStatus('WINDOW SYSTEM · CHECKING');
 
   if (hasWindowManagementApi()) {
     // Fire-and-forget: may prompt for permission, but this launch attempt
@@ -236,27 +256,24 @@ async function runLaunchFlow(): Promise<void> {
     requestWindowManagementPermissionInBackground();
   }
 
-  setStatus('CHECKING WINDOW ACCESS...');
   if (!testPopupCapability()) {
-    setStatus('');
-    showError('팝업이 차단되어 있습니다. Chrome 팝업 차단을 해제한 뒤 다시 시도하세요.');
-    startBtn.disabled = false;
+    await showLaunchError('Allow pop-ups for this site, then try again.', transitionStartedAt);
     return;
   }
 
-  setStatus('OPENING INSTRUMENTS...');
+  setStatus('CALIBRATING LIGHT');
 
   const level = LEVELS[activeLevelIndex];
   const result = await manager.launchAll(sessionId, level);
 
   if (result.ok) {
-    setStatus(`${String(level.index + 1).padStart(2, '0')} · ${level.name.toUpperCase()} — EXPERIMENT READY`);
+    await finishLaunchTransition(transitionStartedAt);
+    document.body.classList.add('experiment-active');
+    setStatus('WINDOW SYSTEM · READY');
     startBtn.disabled = false;
     startBtnLabel.textContent = 'RESTART EXPERIMENT';
   } else {
-    setStatus('');
-    showError(result.error);
-    startBtn.disabled = false;
+    await showLaunchError('Window access was not granted. Allow pop-ups, then try again.', transitionStartedAt);
   }
 }
 
@@ -328,7 +345,3 @@ bus.subscribe((msg) => {
 });
 
 renderLevelOverview();
-
-if (onboarding.shouldOpenAutomatically()) {
-  onboarding.open();
-}

@@ -70,13 +70,14 @@ describe('launcher shell', () => {
     expect(doc.querySelector('script[src="/src/launcher/main.ts"]')).not.toBeNull();
   });
 
-  it('ships an accessible first-run tutorial that can be reopened from the launcher', () => {
+  it('keeps the field guide available after launch without adding a second primary CTA', () => {
     const doc = new DOMParser().parseFromString(launcherHtml, 'text/html');
     const tutorialButton = doc.querySelector<HTMLButtonElement>('#tutorial-btn');
     const onboarding = doc.querySelector<HTMLElement>('#onboarding');
 
     expect(tutorialButton?.type).toBe('button');
-    expect(tutorialButton?.textContent).toContain('튜토리얼 보기');
+    expect(tutorialButton?.textContent).toContain('OPEN FIELD GUIDE');
+    expect(tutorialButton?.closest('.launcher-mission')).not.toBeNull();
     expect(onboarding?.hidden).toBe(true);
     expect(onboarding?.querySelector('[role="dialog"]')?.getAttribute('aria-modal')).toBe('true');
     expect(onboarding?.querySelector('#onboarding-progress')?.getAttribute('aria-valuemax')).toBe('5');
@@ -86,6 +87,22 @@ describe('launcher shell', () => {
     expect(onboarding?.querySelector('.tutorial-prism')).not.toBeNull();
     expect(onboarding?.querySelector('.tutorial-earth')).not.toBeNull();
     expect(onboarding?.querySelector('.tutorial-mars')).not.toBeNull();
+  });
+
+  it('uses a static optical motif and keeps the initial composition minimal', () => {
+    const doc = new DOMParser().parseFromString(launcherHtml, 'text/html');
+    const optic = doc.querySelector<HTMLElement>('.launcher-optic');
+    const hero = doc.querySelector<HTMLElement>('.launcher-hero');
+    const idleButtons = [...(hero?.querySelectorAll('button') ?? [])].filter(
+      (button) => !button.closest('.launcher-access-panel')
+    );
+
+    expect(optic?.querySelector('svg')).not.toBeNull();
+    expect(doc.querySelector('#bg-demo-canvas')).toBeNull();
+    expect(idleButtons).toHaveLength(1);
+    expect(hero?.querySelector('#start-btn')?.textContent).toContain('BEGIN EXPERIMENT');
+    expect(doc.querySelector('.launcher-intro')).toBeNull();
+    expect(doc.querySelector('.launcher-online')).toBeNull();
   });
 
   it('keeps generic overlay stacking rules from pulling launcher layers into normal flow', () => {

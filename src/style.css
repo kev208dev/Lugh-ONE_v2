@@ -1175,6 +1175,456 @@ body.launcher-page.onboarding-open {
   }
 }
 
+/* ---------------------------------------------------------------------
+ * Launcher V2 — restrained editorial entry. This final scoped layer keeps
+ * the mission/tutorial DOM available after launch while the first frame is
+ * reduced to title, one sentence, one action, and quiet system metadata.
+ * --------------------------------------------------------------------- */
+
+body.launcher-page {
+  --accent: #ddf7f8;
+  --fg: #edf4f4;
+  background:
+    radial-gradient(circle at 66% 47%, rgba(190, 239, 242, 0.025), transparent 28rem),
+    linear-gradient(135deg, #070808 0%, #050606 72%, #060707 100%);
+}
+
+.launcher-optic {
+  position: fixed;
+  inset-inline-start: clamp(16rem, 25vw, 38rem);
+  top: 55%;
+  width: min(76vw, 96rem);
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  contain: layout paint;
+  opacity: 0.34;
+  transform: translate3d(0, -50%, 0);
+  transition: opacity 700ms ease, transform 900ms ease;
+  animation: launcher-optic-reveal 900ms ease-out both;
+}
+
+.launcher-optic svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.launcher-optic-beam {
+  fill: none;
+  stroke: url(#launcher-beam-fade);
+  stroke-width: 0.75;
+  vector-effect: non-scaling-stroke;
+}
+
+.launcher-optic-prism {
+  fill: url(#launcher-glass);
+  stroke: rgba(221, 247, 248, 0.48);
+  stroke-width: 0.75;
+  vector-effect: non-scaling-stroke;
+}
+
+.launcher-optic-spectrum {
+  opacity: 0.3;
+  transition: opacity 650ms ease;
+}
+
+.launcher-ray {
+  fill: none;
+  stroke-width: 0.65;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.launcher-ray-violet { stroke: #a994f7; }
+.launcher-ray-blue { stroke: #91bdf4; }
+.launcher-ray-cyan { stroke: #9ce8e6; }
+.launcher-ray-amber { stroke: #e8d49d; }
+.launcher-ray-red { stroke: #eaa09b; }
+
+.launcher-grain {
+  opacity: 0.022;
+  mix-blend-mode: soft-light;
+}
+
+.launcher-vignette {
+  background:
+    linear-gradient(90deg, rgba(2, 3, 3, 0.1), transparent 48%, rgba(2, 3, 3, 0.24)),
+    radial-gradient(ellipse at 49% 45%, transparent 32%, rgba(0, 0, 0, 0.58) 100%);
+}
+
+.launcher-nav,
+.launcher-kicker,
+.launcher-intro,
+.launcher-system-status {
+  display: none;
+}
+
+.launcher-content {
+  width: 100%;
+  max-width: none;
+  min-height: calc(100svh - 3.5rem);
+  margin: 0;
+  padding:
+    clamp(6rem, 10vh, 9rem)
+    clamp(4.5rem, 7vw, 11rem)
+    clamp(4rem, 7vh, 6rem);
+  grid-template-columns: minmax(25rem, 30rem) minmax(0, 1fr);
+  gap: clamp(5rem, 10vw, 15rem);
+}
+
+.launcher-hero {
+  width: 100%;
+  max-width: 28rem;
+  transition: opacity 520ms ease, transform 700ms ease;
+  animation: launcher-copy-reveal 700ms ease-out both;
+}
+
+.launcher-title {
+  margin: 0;
+  color: rgba(239, 245, 245, 0.94);
+  font-family: "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(4rem, 5.2vw, 6.25rem);
+  font-weight: 440;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  text-shadow: none;
+}
+
+.launcher-title-lugh,
+.launcher-title-one {
+  display: block;
+}
+
+.launcher-title-one {
+  font-weight: 610;
+  letter-spacing: 0.045em;
+}
+
+.launcher-title-colon {
+  color: #ddf7f8;
+  opacity: 0.68;
+  font-weight: inherit;
+}
+
+.launcher-tagline {
+  margin: 1.65rem 0 0;
+  color: rgba(221, 247, 248, 0.58);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.66rem;
+  font-weight: 540;
+  line-height: 1.85;
+  letter-spacing: 0.24em;
+}
+
+.launcher-actions {
+  flex-direction: column;
+  margin-top: 2.35rem;
+  gap: 0.75rem;
+}
+
+.launcher-begin-btn,
+.launcher-allow-btn {
+  position: relative;
+  min-width: 13.5rem;
+  min-height: 2.9rem;
+  overflow: hidden;
+  justify-content: center;
+  padding: 0 1.2rem;
+  border: 1px solid rgba(221, 247, 248, 0.32);
+  border-radius: 0;
+  background: rgba(7, 10, 10, 0.38);
+  box-shadow: none;
+  color: rgba(239, 248, 248, 0.86);
+  font: inherit;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  cursor: pointer;
+  transition: border-color 220ms ease, color 220ms ease, background-color 220ms ease;
+}
+
+.launcher-begin-btn::after,
+.launcher-allow-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 42%, rgba(221, 247, 248, 0.07) 50%, transparent 58%);
+  transform: translateX(-115%);
+  transition: transform 520ms ease;
+}
+
+.launcher-begin-btn:hover:not(:disabled),
+.launcher-allow-btn:hover {
+  border-color: rgba(221, 247, 248, 0.68);
+  background: rgba(11, 15, 15, 0.48);
+  box-shadow: none;
+  color: #f7ffff;
+  filter: none;
+  transform: none;
+}
+
+.launcher-begin-btn:hover:not(:disabled)::after,
+.launcher-allow-btn:hover::after {
+  transform: translateX(115%);
+}
+
+.launcher-begin-btn:disabled {
+  opacity: 0.34;
+}
+
+.launcher-status {
+  min-height: 1em;
+  color: rgba(221, 247, 248, 0.52);
+  font-size: 0.54rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  opacity: 1;
+}
+
+.launcher-access-panel {
+  display: none;
+  max-width: 25rem;
+  margin: 2.2rem 0 0;
+  padding: 1.25rem 0 0;
+  border: 0;
+  border-top: 1px solid rgba(221, 247, 248, 0.18);
+  border-radius: 0;
+  background: transparent;
+}
+
+.launcher-access-panel.visible {
+  display: block;
+  animation: launcher-copy-reveal 420ms ease-out both;
+}
+
+.launcher-access-title {
+  margin: 0 0 0.85rem;
+  color: rgba(239, 248, 248, 0.9);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+}
+
+.launcher-access-copy {
+  max-width: 22rem;
+  margin: 0;
+  color: rgba(232, 241, 241, 0.58);
+  font-size: 0.76rem;
+  line-height: 1.7;
+}
+
+.launcher-access-message {
+  min-height: 0;
+  margin: 0.65rem 0 1rem;
+  color: rgba(232, 241, 241, 0.4);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.55rem;
+  line-height: 1.6;
+  letter-spacing: 0.06em;
+}
+
+.launcher-access-note {
+  margin: 0.8rem 0 0;
+  color: rgba(221, 247, 248, 0.32);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.48rem;
+  line-height: 1.7;
+  letter-spacing: 0.14em;
+}
+
+body.access-required .launcher-tagline,
+body.access-required .launcher-actions {
+  display: none;
+}
+
+.launcher-mission {
+  display: none;
+}
+
+body.experiment-active .launcher-content {
+  grid-template-columns: minmax(20rem, 25rem) minmax(21rem, 27rem) minmax(0, 1fr);
+  gap: clamp(3rem, 6vw, 8rem);
+}
+
+body.experiment-active .launcher-hero {
+  opacity: 0.42;
+}
+
+body.experiment-active .launcher-mission {
+  display: block;
+  grid-column: 2;
+  padding: 1.3rem 0;
+  border: 0;
+  border-top: 1px solid rgba(221, 247, 248, 0.16);
+  border-bottom: 1px solid rgba(221, 247, 248, 0.1);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  animation: launcher-copy-reveal 520ms ease-out both;
+}
+
+body.experiment-active .launcher-mission::after {
+  display: none;
+}
+
+body.experiment-active .launcher-level-description,
+body.experiment-active .launcher-howto {
+  color: rgba(232, 241, 241, 0.52);
+}
+
+body.experiment-active .launcher-device-list span {
+  border-radius: 0;
+  background: transparent;
+}
+
+.launcher-tutorial-btn {
+  min-height: 0;
+  margin-top: 1rem;
+  padding: 0.55rem 0;
+  border: 0;
+  border-top: 1px solid rgba(221, 247, 248, 0.08);
+  border-radius: 0;
+  background: transparent;
+  color: rgba(221, 247, 248, 0.42);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.16em;
+}
+
+.launcher-tutorial-btn:hover {
+  border-color: rgba(221, 247, 248, 0.16);
+  background: transparent;
+  color: rgba(239, 248, 248, 0.76);
+}
+
+.launcher-footer {
+  position: relative;
+  min-height: 3.5rem;
+  justify-content: flex-end;
+  padding-inline: clamp(4.5rem, 7vw, 11rem);
+  border: 0;
+  color: rgba(221, 247, 248, 0.34);
+  font-size: 0.5rem;
+  line-height: 1.75;
+  letter-spacing: 0.18em;
+  text-align: right;
+}
+
+body.is-launching .launcher-hero {
+  opacity: 0.16;
+  transform: translate3d(0, -0.25rem, 0);
+}
+
+body.is-launching .launcher-optic {
+  opacity: 0.58;
+  transform: translate3d(0.35rem, -50%, 0) scale(1.003);
+}
+
+body.is-launching .launcher-optic-spectrum {
+  opacity: 0.68;
+}
+
+body.experiment-active:not(.is-launching) .launcher-optic {
+  opacity: 0.16;
+}
+
+@keyframes launcher-optic-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(-0.4rem, -50%, 0);
+  }
+}
+
+@keyframes launcher-copy-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.35rem, 0);
+  }
+}
+
+@media (max-width: 1100px) {
+  .launcher-optic {
+    inset-inline-start: 36vw;
+    width: 88vw;
+    opacity: 0.24;
+  }
+
+  .launcher-content,
+  body.experiment-active .launcher-content {
+    grid-template-columns: 1fr;
+    align-content: center;
+    gap: 2.5rem;
+    padding: 5.5rem clamp(2.5rem, 7vw, 5rem) 3.5rem;
+  }
+
+  .launcher-hero {
+    width: 100%;
+    max-width: 28rem;
+    margin-inline: 0;
+  }
+
+  body.experiment-active .launcher-mission {
+    grid-column: 1;
+    width: min(100%, 27rem);
+    margin-inline: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .launcher-content,
+  body.experiment-active .launcher-content {
+    padding: 4rem 1.5rem 2.5rem;
+  }
+
+  .launcher-title {
+    font-size: clamp(3.6rem, 18vw, 4.8rem);
+  }
+
+  .launcher-begin-btn,
+  .launcher-allow-btn {
+    width: auto;
+  }
+
+  .launcher-footer {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 1101px) {
+  .launcher-content {
+    padding-top: 4.5rem;
+    padding-bottom: 2.5rem;
+  }
+
+  .launcher-tagline {
+    margin-top: 1.25rem;
+  }
+
+  .launcher-actions {
+    margin-top: 1.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launcher-optic,
+  .launcher-optic-spectrum,
+  .launcher-hero,
+  .launcher-access-panel.visible,
+  body.experiment-active .launcher-mission {
+    animation: none;
+    transition: none;
+  }
+
+  .launcher-begin-btn::after,
+  .launcher-allow-btn::after {
+    display: none;
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * SUBAGENT C — puzzle feedback overlays. Both overlays are pure CSS-driven
  * fades: JS only ever toggles the `.visible` class (or, for the solved
