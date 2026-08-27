@@ -8,9 +8,9 @@ function sessionIdFromUrl(): string {
 
 function formatGeometry(g: WindowGeometry): string {
   return [
-    `x:${Math.round(g.screenX)} y:${Math.round(g.screenY)}`,
-    `w:${Math.round(g.outerWidth)} h:${Math.round(g.outerHeight)}`,
-    `inset t:${Math.round(g.chromeInsetTop)} l:${Math.round(g.chromeInsetLeft)}`
+    `위치 X:${Math.round(g.screenX)} Y:${Math.round(g.screenY)}`,
+    `크기 너비:${Math.round(g.outerWidth)} 높이:${Math.round(g.outerHeight)}`,
+    `창 여백 위:${Math.round(g.chromeInsetTop)} 왼쪽:${Math.round(g.chromeInsetLeft)}`
   ].join('\n');
 }
 

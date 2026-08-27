@@ -3,8 +3,8 @@ import type { LevelDefinition } from '../types';
 export const level03: LevelDefinition = {
   id: 'balance',
   index: 2,
-  name: 'Balance',
-  description: 'Keep both EARTH and MARS fed without overexposing either one.',
+  name: '빛의 균형',
+  description: '지구와 화성 어느 쪽도 너무 밝아지지 않도록 빛의 양을 맞추세요.',
   requiredDevices: ['prism'],
   sun: { xPct: 0.12, yPct: 0.5 },
   receivers: [
@@ -20,5 +20,5 @@ export const level03: LevelDefinition = {
     holdDurationMs: 1500
   },
   initialDevicePlacement: [{ id: 'prism', xPct: 0.48, yPct: 0.46 }],
-  introHint: 'Feed both, starve neither.'
+  introHint: '두 행성의 빛을 균형 있게 맞추세요.'
 };

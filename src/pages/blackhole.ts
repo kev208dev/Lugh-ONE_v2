@@ -67,7 +67,7 @@ const RAY_TEST_DISTANCE = 1_000_000;
  */
 function runPhysicsAndBroadcast(): void {
   if (!selfGeometry || incomingRay === undefined) {
-    if (physicsHud) physicsHud.textContent = `blackhole: waiting for ${upstreamId}…`;
+    if (physicsHud) physicsHud.textContent = '이전 장치에서 오는 빛을 기다리는 중…';
     renderer.clear();
     outgoingRenderer.clear();
     return;
@@ -76,7 +76,7 @@ function runPhysicsAndBroadcast(): void {
   if (incomingRay === null) {
     // Nothing arrived from upstream (mirror missed/absorbed) — no light to
     // deflect, and nothing to pass on.
-    if (physicsHud) physicsHud.textContent = 'blackhole: no incoming light';
+    if (physicsHud) physicsHud.textContent = '들어오는 빛이 없습니다';
     renderer.clear();
     outgoingRenderer.clear();
     bus.send({
@@ -124,7 +124,7 @@ function runPhysicsAndBroadcast(): void {
         absorbed: true
       });
       if (physicsHud) {
-        physicsHud.textContent = `blackhole: ABSORBED  closest ${result.closestDistance.toFixed(1)}px`;
+        physicsHud.textContent = `빛 흡수 · 최근접 거리 ${result.closestDistance.toFixed(1)}픽셀`;
       }
       return;
     }
@@ -155,10 +155,10 @@ function runPhysicsAndBroadcast(): void {
 
     const deg = ((result.deflectionAngleRad ?? 0) * 180) / Math.PI;
     if (physicsHud) {
-      physicsHud.textContent = `blackhole: deflect ${deg.toFixed(1)}°  closest ${result.closestDistance.toFixed(1)}px`;
+      physicsHud.textContent = `빛 굴절 ${deg.toFixed(1)}도 · 최근접 거리 ${result.closestDistance.toFixed(1)}픽셀`;
     }
   } catch (err) {
-    if (physicsHud) physicsHud.textContent = `blackhole: ERROR — ${String(err)}`;
+    if (physicsHud) physicsHud.textContent = `블랙홀 계산 오류 · ${String(err)}`;
     renderer.clear();
     outgoingRenderer.clear();
     console.error('[blackhole physics]', err);

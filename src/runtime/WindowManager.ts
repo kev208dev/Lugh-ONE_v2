@@ -7,16 +7,16 @@ export type LaunchResult =
   | { ok: false; error: string };
 
 const DEVICE_LABELS = {
-  sun: 'SUN',
-  prism: 'PRISM',
-  earth: 'EARTH',
-  mars: 'MARS',
-  mirror: 'MIRROR',
-  blackhole: 'BLACKHOLE'
+  sun: '태양',
+  prism: '프리즘',
+  earth: '지구',
+  mars: '화성',
+  mirror: '거울',
+  blackhole: '블랙홀'
 } as const;
 
 function deviceLabel(id: DeviceId): string {
-  return isNebulaDeviceId(id) ? 'NEBULA' : DEVICE_LABELS[id];
+  return isNebulaDeviceId(id) ? '성운' : DEVICE_LABELS[id];
 }
 
 function urlFor(id: DeviceId, sessionId: string, levelId: string | undefined): string {

@@ -11,6 +11,15 @@ import { startSolvedSequence, type SolvedSequence } from './solvedSequence';
 
 const LAUNCH_TRANSITION_MS = 820;
 
+const DEVICE_NAMES: Record<string, string> = {
+  sun: '태양',
+  mirror: '거울',
+  blackhole: '블랙홀',
+  prism: '프리즘',
+  earth: '지구',
+  mars: '화성'
+};
+
 const startBtnQ = document.querySelector<HTMLButtonElement>('#start-btn');
 const statusElQ = document.querySelector<HTMLDivElement>('#status');
 const errorPanelQ = document.querySelector<HTMLDivElement>('#error-panel');
@@ -97,14 +106,21 @@ function unlockedThroughIndex(): number {
   return Math.min(LEVELS.length - 1, progress.highestSolvedLevel + 1);
 }
 
+function deviceName(deviceId: string): string {
+  if (deviceId.startsWith('nebula-')) return `성운 ${deviceId.slice('nebula-'.length)}`;
+  return DEVICE_NAMES[deviceId] ?? deviceId;
+}
+
 function formatObjective(levelIndex: number): string {
   const goal = LEVELS[levelIndex].goal;
   const receiverGoals = goal.receivers.map((receiver) => {
-    const maximum = receiver.maxPower === undefined ? '' : `–${receiver.maxPower}%`;
-    return `${receiver.receiverId.toUpperCase()} ${receiver.minPower}%${maximum}`;
+    const range = receiver.maxPower === undefined
+      ? `${receiver.minPower}% 이상`
+      : `${receiver.minPower}~${receiver.maxPower}%`;
+    return `${deviceName(receiver.receiverId)} ${range}`;
   });
   const holdSeconds = goal.holdDurationMs / 1000;
-  return `${receiverGoals.join('  ·  ')}  ·  HOLD ${Number.isInteger(holdSeconds) ? holdSeconds : holdSeconds.toFixed(1)}s`;
+  return `${receiverGoals.join('  ·  ')}  ·  ${Number.isInteger(holdSeconds) ? holdSeconds : holdSeconds.toFixed(1)}초 유지`;
 }
 
 function clearSolvedSequence(): void {
@@ -120,8 +136,8 @@ function selectLevel(index: number): void {
   audio?.stabilizingStop();
   lastPuzzleState = 'PLAYING';
   activeLevelIndex = index;
-  startBtnLabel.textContent = 'BEGIN EXPERIMENT';
-  setStatus(`EXPERIMENT ${String(index + 1).padStart(2, '0')} SELECTED`);
+  startBtnLabel.textContent = '실험 시작';
+  setStatus(`${index + 1}단계를 선택했습니다`);
   renderLevelOverview();
 }
 
@@ -129,9 +145,9 @@ function renderLevelOverview(): void {
   const level = LEVELS[activeLevelIndex];
   const solvedCount = LEVELS.filter((candidate) => progress.solvedLevelIds.includes(candidate.id)).length;
 
-  progressLabel.textContent = `${solvedCount} / ${LEVELS.length} STABLE`;
+  progressLabel.textContent = `${solvedCount} / ${LEVELS.length} 완료`;
   activeLevelNumber.textContent = String(level.index + 1).padStart(2, '0');
-  activeLevelHint.textContent = (level.introHint ?? 'SHAPE THE LIGHT').toUpperCase();
+  activeLevelHint.textContent = level.introHint ?? '빛의 경로를 만드세요';
   activeLevelName.textContent = level.name;
   activeLevelDescription.textContent = level.description ?? '';
   goalSummary.textContent = formatObjective(activeLevelIndex);
@@ -139,7 +155,7 @@ function renderLevelOverview(): void {
   deviceList.replaceChildren();
   for (const deviceId of devicesForLevel(level)) {
     const chip = document.createElement('span');
-    chip.textContent = deviceId.toUpperCase();
+    chip.textContent = deviceName(deviceId);
     deviceList.append(chip);
   }
 
@@ -157,10 +173,10 @@ function renderLevelOverview(): void {
     button.classList.toggle('active', index === activeLevelIndex);
     button.classList.toggle('solved', solved);
     button.disabled = locked;
-    button.setAttribute('aria-label', `${locked ? 'Locked' : 'Select'} experiment ${index + 1}: ${candidate.name}`);
+    button.setAttribute('aria-label', `${locked ? '잠긴' : '선택 가능한'} ${index + 1}단계: ${candidate.name}`);
     if (index === activeLevelIndex) button.setAttribute('aria-current', 'step');
     number.textContent = String(index + 1).padStart(2, '0');
-    state.textContent = solved ? 'STABLE' : locked ? 'LOCKED' : 'READY';
+    state.textContent = solved ? '완료' : locked ? '잠김' : '준비';
     button.append(number, state);
     button.addEventListener('click', () => selectLevel(index));
     levelNav.append(button);
@@ -178,9 +194,9 @@ type AccessErrorOptions = {
 };
 
 function showError(message: string, options: AccessErrorOptions = {}): void {
-  errorTitle.textContent = options.title ?? 'WINDOW ACCESS REQUIRED';
+  errorTitle.textContent = options.title ?? '창 열기 권한이 필요합니다';
   errorMessageEl.textContent = message;
-  retryBtn.textContent = options.actionLabel ?? 'ALLOW ACCESS';
+  retryBtn.textContent = options.actionLabel ?? '권한 허용';
   retryBtn.hidden = options.actionAvailable === false;
   errorPanel.classList.add('visible');
   document.body.classList.add('access-required');
@@ -225,7 +241,7 @@ async function showLaunchError(message: string, startedAt: number): Promise<void
   await finishLaunchTransition(startedAt);
   document.body.classList.remove('experiment-active');
   setStatus('');
-  showError(message, { actionLabel: 'TRY AGAIN' });
+  showError(message, { actionLabel: '다시 시도' });
   retryBtn.focus({ preventScroll: true });
 }
 
@@ -271,14 +287,14 @@ async function runLaunchFlow(): Promise<void> {
 
   if (!isChromiumFamily()) {
     setLaunchBusy(false);
-    showError('Open this experiment in Chrome on desktop.', {
-      title: 'CHROME DESKTOP REQUIRED',
+    showError('데스크톱용 크롬에서 이 실험을 열어 주세요.', {
+      title: '데스크톱용 크롬이 필요합니다',
       actionAvailable: false
     });
     return;
   }
 
-  setStatus('WINDOW SYSTEM · CHECKING');
+  setStatus('창 시스템을 확인하는 중입니다');
 
   if (hasWindowManagementApi()) {
     // Fire-and-forget: may prompt for permission, but this launch attempt
@@ -289,12 +305,12 @@ async function runLaunchFlow(): Promise<void> {
 
   if (!testPopupCapability()) {
     setLaunchBusy(false);
-    showError('Allow pop-ups for this site, then try again.');
+    showError('이 사이트의 팝업을 허용한 뒤 다시 시도해 주세요.');
     retryBtn.focus({ preventScroll: true });
     return;
   }
 
-  setStatus('CALIBRATING LIGHT');
+  setStatus('빛을 조정하는 중입니다');
   const transitionStartedAt = beginLaunchTransition();
 
   const level = LEVELS[activeLevelIndex];
@@ -303,10 +319,10 @@ async function runLaunchFlow(): Promise<void> {
   if (result.ok) {
     await finishLaunchTransition(transitionStartedAt);
     document.body.classList.add('experiment-active');
-    setStatus('WINDOW SYSTEM · READY');
-    startBtnLabel.textContent = 'RESTART EXPERIMENT';
+    setStatus('실험 창이 준비되었습니다');
+    startBtnLabel.textContent = '실험 다시 시작';
   } else {
-    await showLaunchError('Window access was not granted. Allow pop-ups, then try again.', transitionStartedAt);
+    await showLaunchError('창 열기 권한이 없습니다. 팝업을 허용한 뒤 다시 시도해 주세요.', transitionStartedAt);
   }
 }
 
@@ -340,6 +356,10 @@ tutorialBtn.addEventListener('click', () => {
   onboarding.open();
 });
 
+if (onboarding.shouldOpenAutomatically()) {
+  onboarding.open();
+}
+
 bus.subscribe((msg) => {
   if (
     msg.type !== 'puzzle-state' ||
@@ -359,8 +379,16 @@ bus.subscribe((msg) => {
     progress = markSolved(level.id, level.index);
     renderLevelOverview();
     audio?.solved();
+    manager.closeAll();
+    document.body.classList.remove('experiment-active');
+    setLaunchBusy(false);
+    try {
+      window.focus();
+    } catch {
+      // Focus is a best effort; closing the device windows still exposes the launcher.
+    }
     solvedBanner.showStable();
-    setStatus('EXPERIMENT STABLE');
+    setStatus('실험이 안정화되었습니다');
     clearSolvedSequence();
     solvedSequence = startSolvedSequence({
       currentLevelIndex: solvedLevelIndex,
@@ -385,12 +413,7 @@ bus.subscribe((msg) => {
         if (activeLevelIndex !== solvedLevelIndex) return;
         activeLevelIndex = nextLevelIndex;
         renderLevelOverview();
-        setStatus(`EXPERIMENT ${String(nextLevelIndex + 1).padStart(2, '0')} LOADING`);
-        try {
-          window.focus();
-        } catch {
-          // Some browsers deny programmatic focus; launching still proceeds.
-        }
+        setStatus(`${nextLevelIndex + 1}단계를 시작합니다`);
         void runLaunchFlow();
       }
     });
