@@ -51,12 +51,15 @@ describe('launcher shell', () => {
     const doc = new DOMParser().parseFromString(launcherHtml, 'text/html');
     const title = doc.querySelector<HTMLHeadingElement>('#launcher-title');
     const startButton = doc.querySelector<HTMLButtonElement>('#start-btn');
+    const restartFirstButton = doc.querySelector<HTMLButtonElement>('#restart-first-btn');
     const mission = doc.querySelector<HTMLElement>('.launcher-mission');
 
     expect(doc.body.classList.contains('launcher-page')).toBe(true);
     expect(title?.textContent?.replace(/\s/g, '')).toBe('Lugh:ONE');
     expect(startButton?.type).toBe('button');
     expect(startButton?.textContent).toContain('실험 시작');
+    expect(restartFirstButton?.type).toBe('button');
+    expect(restartFirstButton?.textContent).toContain('1단계부터 다시 시작');
 
     expect(mission).not.toBeNull();
     expect(mission?.querySelector('#active-level-number')?.textContent?.trim()).toBe('01');
@@ -99,8 +102,9 @@ describe('launcher shell', () => {
 
     expect(optic?.querySelector('svg')).not.toBeNull();
     expect(doc.querySelector('#bg-demo-canvas')).toBeNull();
-    expect(idleButtons).toHaveLength(1);
+    expect(idleButtons).toHaveLength(2);
     expect(hero?.querySelector('#start-btn')?.textContent).toContain('실험 시작');
+    expect(hero?.querySelector('#restart-first-btn')?.textContent).toContain('1단계부터 다시 시작');
     expect(doc.querySelector('.launcher-intro')).toBeNull();
     expect(doc.querySelector('.launcher-online')).toBeNull();
   });

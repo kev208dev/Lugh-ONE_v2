@@ -57,6 +57,34 @@ export class LightRenderer {
     ctx.stroke();
   }
 
+  /** Draws a sampled continuous beam path. This is used when one optical
+   * curve spans multiple popup windows, where a single shared list of points
+   * avoids a tangent discontinuity at each window boundary. */
+  drawPath(points: Point[], color = '#ffffff'): void {
+    const { ctx, canvas } = this;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (points.length < 2) return;
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let index = 1; index < points.length; index += 1) {
+      ctx.lineTo(points[index].x, points[index].y);
+    }
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.1;
+    ctx.lineWidth = 7;
+    ctx.stroke();
+    ctx.globalAlpha = 0.22;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
   /** `color` defaults to white; pass a spectral color (e.g. from
    * wavelengthToRgb) to tint a beam that's carrying real dispersed light —
    * used by EARTH/MARS so the incoming beam reads as "the same light that

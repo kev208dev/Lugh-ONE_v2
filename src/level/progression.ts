@@ -53,6 +53,18 @@ export function markSolved(levelId: string, levelIndex: number): Progress {
   return updated;
 }
 
+/** Clears every completed-level record and returns a fresh progress value. */
+export function resetProgress(): Progress {
+  const empty = { ...EMPTY_PROGRESS, solvedLevelIds: [] };
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // The caller still receives fresh in-memory progress when storage is
+    // unavailable, matching loadProgress/markSolved's fail-safe behavior.
+  }
+  return empty;
+}
+
 export function isLevelSolved(levelId: string): boolean {
   return loadProgress().solvedLevelIds.includes(levelId);
 }
