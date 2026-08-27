@@ -73,8 +73,14 @@ export interface ReceiverBeam {
 }
 
 export type BusMessage =
-  | { type: 'hello'; id: DeviceId; sessionId: string }
-  | { type: 'bye'; id: DeviceId; sessionId: string }
+  | { type: 'hello'; id: DeviceId; sessionId: string; launchId: string }
+  | { type: 'bye'; id: DeviceId; sessionId: string; launchId: string }
+  | {
+      type: 'experiment-abort';
+      id: DeviceId;
+      launchId: string;
+      reason: 'fullscreen' | 'oversized-window';
+    }
   | { type: 'geometry-update'; geometry: WindowGeometry }
   /** Coalesced PRISM rotation: at most ~20-30Hz while actively rotating, plus
    * one immediate send the moment interaction ends. Never sent per-pointer-event. */

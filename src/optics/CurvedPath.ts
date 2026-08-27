@@ -133,3 +133,66 @@ export function pathDirectionNear(points: Point[], target: Point): Point | null 
 
   return bestDirection;
 }
+
+export interface PathPolygonIntersection {
+  point: Point;
+  /** Index of the segment's ending point in the sampled path. */
+  segmentIndex: number;
+  direction: Point;
+}
+
+function cross(a: Point, b: Point): number {
+  return a.x * b.y - a.y * b.x;
+}
+
+/** Finds the first real crossing between a sampled path and a polygon edge.
+ * Unlike extending a nearby tangent as an infinite ray, this guarantees the
+ * prism only receives light where the curved beam itself reaches the glass. */
+export function firstPathPolygonIntersection(
+  points: Point[],
+  polygon: readonly Point[]
+): PathPolygonIntersection | null {
+  if (points.length < 2 || polygon.length < 3) return null;
+  const epsilon = 1e-9;
+
+  for (let segmentIndex = 1; segmentIndex < points.length; segmentIndex += 1) {
+    const start = points[segmentIndex - 1];
+    const end = points[segmentIndex];
+    const pathVector = { x: end.x - start.x, y: end.y - start.y };
+    if (Math.hypot(pathVector.x, pathVector.y) <= epsilon) continue;
+
+    let firstT = Number.POSITIVE_INFINITY;
+    for (let edgeIndex = 0; edgeIndex < polygon.length; edgeIndex += 1) {
+      const edgeStart = polygon[edgeIndex];
+      const edgeEnd = polygon[(edgeIndex + 1) % polygon.length];
+      const edgeVector = { x: edgeEnd.x - edgeStart.x, y: edgeEnd.y - edgeStart.y };
+      const denominator = cross(pathVector, edgeVector);
+      if (Math.abs(denominator) <= epsilon) continue;
+
+      const betweenStarts = { x: edgeStart.x - start.x, y: edgeStart.y - start.y };
+      const pathT = cross(betweenStarts, edgeVector) / denominator;
+      const edgeT = cross(betweenStarts, pathVector) / denominator;
+      if (
+        pathT >= -epsilon &&
+        pathT <= 1 + epsilon &&
+        edgeT >= -epsilon &&
+        edgeT <= 1 + epsilon
+      ) {
+        firstT = Math.min(firstT, Math.max(0, Math.min(1, pathT)));
+      }
+    }
+
+    if (Number.isFinite(firstT)) {
+      return {
+        point: {
+          x: start.x + pathVector.x * firstT,
+          y: start.y + pathVector.y * firstT
+        },
+        segmentIndex,
+        direction: normalize(pathVector)
+      };
+    }
+  }
+
+  return null;
+}

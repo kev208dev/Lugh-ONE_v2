@@ -1,6 +1,7 @@
 import type { SpectrumFan } from './spectrumGeometry';
 import type { SpectralRay } from '../optics/PrismPhysics';
 import { wavelengthToRgb } from '../optics/Spectrum';
+import { spectralStripeOffset } from './LightRenderer';
 
 /**
  * Thin wrapper around a full-window <canvas> that draws the refracted
@@ -84,21 +85,31 @@ export class SpectrumRenderer {
     if (rays.length > 0) {
       const rayLength = Math.hypot(canvas.width, canvas.height) * 1.35;
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalCompositeOperation = 'source-over';
       ctx.lineCap = 'round';
-      for (const ray of rays) {
+      rays.forEach((ray, index) => {
         const { r, g, b } = wavelengthToRgb(ray.wavelengthNm);
+        const stripeOffset = spectralStripeOffset(index, rays.length);
+        const perpendicular = {
+          x: -ray.exitDirection.y * stripeOffset,
+          y: ray.exitDirection.x * stripeOffset
+        };
+        const spreadDistance = Math.min(48, rayLength * 0.12);
         ctx.beginPath();
         ctx.moveTo(ray.exitPoint.x, ray.exitPoint.y);
         ctx.lineTo(
-          ray.exitPoint.x + ray.exitDirection.x * rayLength,
-          ray.exitPoint.y + ray.exitDirection.y * rayLength
+          ray.exitPoint.x + ray.exitDirection.x * spreadDistance + perpendicular.x,
+          ray.exitPoint.y + ray.exitDirection.y * spreadDistance + perpendicular.y
+        );
+        ctx.lineTo(
+          ray.exitPoint.x + ray.exitDirection.x * rayLength + perpendicular.x,
+          ray.exitPoint.y + ray.exitDirection.y * rayLength + perpendicular.y
         );
         ctx.strokeStyle = `rgb(${r},${g},${b})`;
-        ctx.globalAlpha = 0.42;
-        ctx.lineWidth = 2.4;
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 1.8;
         ctx.stroke();
-      }
+      });
       ctx.restore();
     }
 

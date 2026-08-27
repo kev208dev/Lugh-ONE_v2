@@ -89,7 +89,7 @@ const onboardingRoot: HTMLElement = onboardingRootQ;
 // popup names / future BroadcastChannel scoping stay stable across retries.
 const sessionId = crypto.randomUUID();
 
-const manager = new WindowManager();
+const manager = new WindowManager(() => stopExperimentForDeviceExit());
 const bus = createMessageBus(sessionId);
 const solvedBanner = new SolvedBanner(document.body);
 let progress = loadProgress();
@@ -131,8 +131,21 @@ function clearSolvedSequence(): void {
   solvedSequence = undefined;
 }
 
+function stopExperimentForDeviceExit(): void {
+  if (!document.body.classList.contains('experiment-active')) return;
+  document.body.classList.remove('experiment-active');
+  manager.closeAll();
+  clearSolvedSequence();
+  audio?.stabilizingStop();
+  lastPuzzleState = 'PLAYING';
+  setLaunchBusy(false);
+  startBtnLabel.textContent = '실험 다시 시작';
+  setStatus('장치 창 하나가 닫히거나 전체 화면으로 변경되어 모든 실험 창을 닫았습니다');
+}
+
 function selectLevel(index: number): void {
   if (index > unlockedThroughIndex() || index === activeLevelIndex) return;
+  document.body.classList.remove('experiment-active');
   manager.closeAll();
   solvedBanner.hide();
   clearSolvedSequence();
@@ -283,6 +296,7 @@ async function runLaunchFlow(options: { resetProgressOnSuccess?: boolean } = {})
   clearSolvedSequence();
   audio?.stabilizingStop();
   lastPuzzleState = 'PLAYING';
+  document.body.classList.remove('experiment-active');
   // Defensive: a retry must never accumulate windows even if a previous
   // partial state somehow survived.
   manager.closeAll();
@@ -377,6 +391,10 @@ if (onboarding.shouldOpenAutomatically()) {
 }
 
 bus.subscribe((msg) => {
+  if (msg.type === 'bye' || msg.type === 'experiment-abort') {
+    if (manager.isCurrentLaunch(msg.launchId)) stopExperimentForDeviceExit();
+    return;
+  }
   if (
     msg.type !== 'puzzle-state' ||
     msg.levelId !== LEVELS[activeLevelIndex].id ||
@@ -395,8 +413,8 @@ bus.subscribe((msg) => {
     progress = markSolved(level.id, level.index);
     renderLevelOverview();
     audio?.solved();
-    manager.closeAll();
     document.body.classList.remove('experiment-active');
+    manager.closeAll();
     setLaunchBusy(false);
     try {
       window.focus();

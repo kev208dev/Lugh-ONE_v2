@@ -19,8 +19,8 @@ function deviceLabel(id: DeviceId): string {
   return isNebulaDeviceId(id) ? '성운' : DEVICE_LABELS[id];
 }
 
-function urlFor(id: DeviceId, sessionId: string, levelId: string | undefined): string {
-  const params = new URLSearchParams({ session: sessionId });
+function urlFor(id: DeviceId, sessionId: string, launchId: string, levelId: string | undefined): string {
+  const params = new URLSearchParams({ session: sessionId, launch: launchId });
   if (levelId) params.set('level', levelId);
   if (isNebulaDeviceId(id)) params.set('device', id);
   const page = isNebulaDeviceId(id) ? 'nebula' : id;
@@ -28,7 +28,7 @@ function urlFor(id: DeviceId, sessionId: string, levelId: string | undefined): s
 }
 
 function featuresString(rect: { left: number; top: number; width: number; height: number }): string {
-  return `popup=yes,left=${Math.round(rect.left)},top=${Math.round(rect.top)},width=${Math.round(
+  return `popup=yes,resizable=no,fullscreen=no,left=${Math.round(rect.left)},top=${Math.round(rect.top)},width=${Math.round(
     rect.width
   )},height=${Math.round(rect.height)}`;
 }
@@ -42,6 +42,9 @@ function featuresString(rect: { left: number; top: number; width: number; height
 export class WindowManager {
   private registry: Map<DeviceId, Window> = new Map();
   private pollHandle: ReturnType<typeof setInterval> | undefined;
+  private activeLaunchId: string | undefined;
+
+  constructor(private readonly onUnexpectedClose?: () => void) {}
 
   /**
    * `level`, when given, opens only that level's devices (sun + its
@@ -65,6 +68,7 @@ export class WindowManager {
 
     const layouts = level ? resolveDeviceLayoutsForLevel(level) : DEVICE_LAYOUTS;
     const deviceIds = level ? layouts.map((l) => l.id) : DEVICE_IDS;
+    const launchId = crypto.randomUUID();
 
     const opened: Map<DeviceId, Window> = new Map();
 
@@ -76,7 +80,7 @@ export class WindowManager {
       }
 
       const rect = resolveWindowFeatures(layout, workArea);
-      const win = window.open(urlFor(id, sessionId, level?.id), popupNameFor(id), featuresString(rect));
+      const win = window.open(urlFor(id, sessionId, launchId, level?.id), popupNameFor(id), featuresString(rect));
 
       if (!win) {
         this.closeOpened(opened);
@@ -88,6 +92,7 @@ export class WindowManager {
 
     // Full success: adopt into the real registry.
     this.registry = opened;
+    this.activeLaunchId = launchId;
     this.startPolling();
 
     const windows = {} as Record<DeviceId, Window>;
@@ -100,7 +105,12 @@ export class WindowManager {
   closeAll(): void {
     this.closeOpened(this.registry);
     this.registry = new Map();
+    this.activeLaunchId = undefined;
     this.stopPolling();
+  }
+
+  isCurrentLaunch(launchId: string): boolean {
+    return this.activeLaunchId === launchId;
   }
 
   isOpen(id: DeviceId): boolean {
@@ -128,10 +138,9 @@ export class WindowManager {
   private startPolling(): void {
     this.stopPolling();
     this.pollHandle = setInterval(() => {
-      for (const [id, win] of this.registry) {
-        if (win.closed) {
-          this.registry.delete(id);
-        }
+      if ([...this.registry.values()].some((win) => win.closed)) {
+        this.closeAll();
+        this.onUnexpectedClose?.();
       }
     }, 500);
   }

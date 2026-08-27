@@ -17,7 +17,11 @@ import { resolveUpstream } from '../level/types';
 import { evaluateGoal } from '../puzzle/GoalEvaluator';
 import { PuzzleStateMachine } from '../puzzle/PuzzleStateMachine';
 import { nebulaCircleFromGeometry, traceNebulaAbsorption } from '../optics/NebulaOcclusion';
-import { clipPathToRect, pathDirectionNear } from '../optics/CurvedPath';
+import {
+  clipPathToRect,
+  firstPathPolygonIntersection,
+  type PathPolygonIntersection
+} from '../optics/CurvedPath';
 
 // See src/pages/blackhole.ts's identical comment: a level that skips
 // straight from SUN (no MIRROR or BLACKHOLE) routes PRISM directly to SUN's
@@ -205,36 +209,42 @@ function recomputeFromSun(): void {
   runPhysicsAndReportTiming();
 }
 
+interface CurvedPrismInput {
+  visibleLocal: Point[];
+  hit: PathPolygonIntersection | null;
+}
+
+function curvedPrismInput(vertices: readonly Point[]): CurvedPrismInput | null {
+  if (!selfGeometry || !incomingRay?.pathGlobal) return null;
+  const visibleGlobal = clipPathToRect(incomingRay.pathGlobal, windowRectGlobal(selfGeometry));
+  if (visibleGlobal.length < 2) return null;
+  const visibleLocal = visibleGlobal.map((point) => globalToLocal(point, selfGeometry!));
+  return {
+    visibleLocal,
+    hit: firstPathPolygonIntersection(visibleLocal, vertices)
+  };
+}
+
 /** Draws white light only up to the first glass contact. If the ray misses
  * the triangle, it remains an uninterrupted white pass-through. */
-function renderIncoming(entryPointLocal: Point | null): void {
+function renderIncoming(entryPointLocal: Point | null, curvedInput: CurvedPrismInput | null): void {
   if (!selfGeometry || !incomingRay) {
     renderer.clear();
     return;
   }
 
-  const myRect = windowRectGlobal(selfGeometry);
-  if (incomingRay.pathGlobal) {
-    const visibleGlobal = clipPathToRect(incomingRay.pathGlobal, myRect);
-    if (visibleGlobal.length >= 2) {
-      let visibleLocal = visibleGlobal.map((point) => globalToLocal(point, selfGeometry!));
-      if (entryPointLocal) {
-        let closestIndex = 0;
-        let closestDistanceSquared = Number.POSITIVE_INFINITY;
-        visibleLocal.forEach((point, index) => {
-          const distanceSquared = (point.x - entryPointLocal.x) ** 2 + (point.y - entryPointLocal.y) ** 2;
-          if (distanceSquared < closestDistanceSquared) {
-            closestDistanceSquared = distanceSquared;
-            closestIndex = index;
-          }
-        });
-        visibleLocal = [...visibleLocal.slice(0, closestIndex + 1), entryPointLocal];
-      }
-      renderer.drawPath(visibleLocal);
-      return;
-    }
+  if (curvedInput) {
+    const visiblePath = curvedInput.hit
+      ? [
+          ...curvedInput.visibleLocal.slice(0, curvedInput.hit.segmentIndex),
+          curvedInput.hit.point
+        ]
+      : curvedInput.visibleLocal;
+    renderer.drawPath(visiblePath);
+    return;
   }
 
+  const myRect = windowRectGlobal(selfGeometry);
   const p1 = incomingRay.originGlobal;
   const p2 = {
     x: p1.x + incomingRay.directionGlobal.x * 1_000_000,
@@ -325,21 +335,24 @@ function runPhysicsAndReportTiming(): void {
   }
 
   try {
-    let originGlobal = incomingRay.originGlobal;
-    let dir = incomingRay.directionGlobal; // direction vectors are translation-invariant
-    if (incomingRay.pathGlobal) {
-      const visiblePath = clipPathToRect(incomingRay.pathGlobal, windowRectGlobal(selfGeometry));
-      if (visiblePath.length >= 2) {
-        originGlobal = visiblePath[0];
-        dir = pathDirectionNear(incomingRay.pathGlobal, windowRectGlobalCenter(selfGeometry)) ?? dir;
-      }
-    }
-    const originLocal = globalToLocal(originGlobal, selfGeometry);
-
     const vertices = computePrismVertices(window.innerWidth, window.innerHeight, angleDeg);
+    const curvedInput = curvedPrismInput(vertices);
 
     const t0 = performance.now();
-    const trace = tracePrismInteraction(originLocal, dir, { vertices });
+    let trace: ReturnType<typeof tracePrismInteraction>;
+    if (curvedInput) {
+      if (curvedInput.hit) {
+        const segmentStart = curvedInput.visibleLocal[curvedInput.hit.segmentIndex - 1];
+        trace = tracePrismInteraction(segmentStart, curvedInput.hit.direction, { vertices });
+      } else {
+        // The actual curve misses the triangle. Never extend a nearby tangent
+        // as an infinite line, which used to make light jump into the glass.
+        trace = { entryPoint: null, rays: [] };
+      }
+    } else {
+      const originLocal = globalToLocal(incomingRay.originGlobal, selfGeometry);
+      trace = tracePrismInteraction(originLocal, incomingRay.directionGlobal, { vertices });
+    }
     const rays = trace.rays;
     const elapsedMs = performance.now() - t0;
 
@@ -348,7 +361,7 @@ function runPhysicsAndReportTiming(): void {
       ? `프리즘 통과 · 분광 ${rays.length}/${total} · ${elapsedMs.toFixed(2)}밀리초`
       : `프리즘을 빗나감 · 흰빛 유지 · ${elapsedMs.toFixed(2)}밀리초`;
 
-    renderIncoming(trace.entryPoint);
+    renderIncoming(trace.entryPoint, curvedInput);
     spectrumRenderer.drawFan(buildSpectrumFan(rays), rays);
 
     const nebulaHits: NebulaLightMap = new Map();
