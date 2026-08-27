@@ -6,7 +6,7 @@ import { globalToLocal, localToGlobal } from '../runtime/globalCoords';
 import { clipSegmentToRect, type Point } from '../optics/Ray';
 import { BlackHoleRenderer } from '../devices/BlackHole';
 import { deflectRay, DEFAULT_BLACK_HOLE_CONFIG } from '../optics/BlackHolePhysics';
-import { straightRayFromSun } from '../optics/upstream';
+import { parallelRayFromSun } from '../optics/upstream';
 import { currentLevel } from '../level/session';
 import { resolveUpstream } from '../level/types';
 
@@ -51,7 +51,7 @@ let incomingRay: { originGlobal: Point; directionGlobal: Point } | null | undefi
  * whenever either SUN's geometry or this window's own geometry changes. */
 function recomputeFromSun(): void {
   if (upstreamId !== 'sun') return;
-  incomingRay = selfGeometry && sunGeometry ? straightRayFromSun(sunGeometry, selfGeometry) : undefined;
+  incomingRay = selfGeometry && sunGeometry ? parallelRayFromSun(sunGeometry, selfGeometry) : undefined;
   runPhysicsAndBroadcast();
 }
 

@@ -1,4 +1,6 @@
 import type { PuzzleState } from '../level/types';
+import earthImageUrl from '../assets/earth.png';
+import marsImageUrl from '../assets/mars.png';
 
 export type PlanetTheme = 'earth' | 'mars';
 
@@ -98,6 +100,7 @@ export class ReceiverPlanetRenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly theme: PlanetTheme;
+  private readonly image: HTMLImageElement;
   private lastState: PlanetVisualState = {
     percent: 0,
     goalMinPower: 100,
@@ -112,6 +115,9 @@ export class ReceiverPlanetRenderer {
     if (!ctx) throw new Error('ReceiverPlanetRenderer: 2d context unavailable');
     this.ctx = ctx;
     this.theme = theme;
+    this.image = new Image();
+    this.image.addEventListener('load', () => this.draw(this.lastState, this.lastNowMs));
+    this.image.src = theme === 'earth' ? earthImageUrl : marsImageUrl;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -140,8 +146,8 @@ export class ReceiverPlanetRenderer {
 
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
-    const planetR = Math.min(canvas.width, canvas.height) * 0.16;
-    const ringR = planetR * 1.6;
+    const planetR = Math.min(canvas.width, canvas.height) * 0.24;
+    const ringR = planetR * 1.48;
     const stabilizeRingR = planetR * 1.32;
 
     const palette = PALETTES[theme];
@@ -152,22 +158,31 @@ export class ReceiverPlanetRenderer {
     const pulse = 0.5 + 0.5 * Math.sin((nowMs / PULSE_PERIOD_MS) * Math.PI * 2);
 
     // --- Planet body ----------------------------------------------------
-    const bodyGradient = ctx.createRadialGradient(
-      cx - planetR * 0.3,
-      cy - planetR * 0.3,
-      planetR * 0.05,
-      cx,
-      cy,
-      planetR
-    );
-    bodyGradient.addColorStop(0, palette.highlight);
-    bodyGradient.addColorStop(0.55, palette.mid);
-    bodyGradient.addColorStop(1, palette.shadow);
+    if (this.image.complete && this.image.naturalWidth > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, planetR, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(this.image, cx - planetR, cy - planetR, planetR * 2, planetR * 2);
+      ctx.restore();
+    } else {
+      const bodyGradient = ctx.createRadialGradient(
+        cx - planetR * 0.3,
+        cy - planetR * 0.3,
+        planetR * 0.05,
+        cx,
+        cy,
+        planetR
+      );
+      bodyGradient.addColorStop(0, palette.highlight);
+      bodyGradient.addColorStop(0.55, palette.mid);
+      bodyGradient.addColorStop(1, palette.shadow);
 
-    ctx.beginPath();
-    ctx.arc(cx, cy, planetR, 0, Math.PI * 2);
-    ctx.fillStyle = bodyGradient;
-    ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, planetR, 0, Math.PI * 2);
+      ctx.fillStyle = bodyGradient;
+      ctx.fill();
+    }
 
     const overlayAlpha = (1 - TIER_BRIGHTNESS[tier]) * 0.85;
     if (overlayAlpha > 0.001) {

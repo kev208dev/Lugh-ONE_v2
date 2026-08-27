@@ -4,9 +4,15 @@
 
 import type { Point } from '../optics/Ray';
 
-export type DeviceId = 'sun' | 'prism' | 'earth' | 'mars' | 'mirror' | 'blackhole';
+export type CoreDeviceId = 'sun' | 'prism' | 'earth' | 'mars' | 'mirror' | 'blackhole';
+export type NebulaDeviceId = `nebula-${number}`;
+export type DeviceId = CoreDeviceId | NebulaDeviceId;
 
-export const DEVICE_IDS: DeviceId[] = ['sun', 'mirror', 'blackhole', 'prism', 'earth', 'mars'];
+export const DEVICE_IDS: CoreDeviceId[] = ['sun', 'mirror', 'blackhole', 'prism', 'earth', 'mars'];
+
+export function isNebulaDeviceId(id: DeviceId): id is NebulaDeviceId {
+  return id.startsWith('nebula-');
+}
 
 /** Stable per-device popup name (also the BroadcastChannel scoping key input). */
 export function popupNameFor(id: DeviceId): string {
@@ -100,6 +106,10 @@ export type BusMessage =
    * uses). `absorbed: true` means the ray terminated at this device (e.g. a
    * black hole's event horizon) and there is no continuation to draw. */
   | { type: 'ray-state'; from: DeviceId; originGlobal: Point; directionGlobal: Point; absorbed: boolean }
+  /** A light-producing page reports how much energy a fixed nebula obstacle
+   * absorbed. Each nebula combines reports by source so an idle source does
+   * not erase a simultaneous hit from another stage of the optical chain. */
+  | { type: 'nebula-state'; id: NebulaDeviceId; source: DeviceId; intensity: number; color: string }
   /** Broadcast by PRISM alongside 'level-state', ONLY when a puzzle level is
    * active (see level/session.ts) — carries the puzzle state machine's
    * current state and per-receiver pass/fail so EARTH/MARS (ring visuals)

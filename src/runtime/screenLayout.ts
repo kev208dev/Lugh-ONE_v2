@@ -103,6 +103,7 @@ export function resolveDeviceLayoutsForLevel(level: LevelDefinition): DeviceLayo
   overrides.set('sun', level.sun);
   for (const r of level.receivers) overrides.set(r.id, r);
   for (const p of level.initialDevicePlacement) overrides.set(p.id, p);
+  for (const nebula of level.nebulae ?? []) overrides.set(nebula.id, nebula);
 
   return ids.map((id) => {
     const fallback = DEVICE_LAYOUTS.find((l) => l.id === id);
@@ -110,12 +111,13 @@ export function resolveDeviceLayoutsForLevel(level: LevelDefinition): DeviceLayo
     if (!pos) {
       throw new Error(`resolveDeviceLayoutsForLevel: no position for device "${id}" — level "${level.id}" opens it but never places it`);
     }
+    const nebula = level.nebulae?.find((candidate) => candidate.id === id);
     return {
       id,
       xPct: pos.xPct,
       yPct: pos.yPct,
-      width: fallback?.width ?? 260,
-      height: fallback?.height ?? 260
+      width: nebula?.sizePx ?? fallback?.width ?? 260,
+      height: nebula?.sizePx ?? fallback?.height ?? 260
     };
   });
 }

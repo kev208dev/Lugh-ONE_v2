@@ -3,48 +3,69 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#070910" />
+  <meta name="theme-color" content="#050606" />
   <meta name="description" content="A multi-window optical puzzle. Move the instruments and shape the light." />
   <title>Lugh: ONE</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body class="launcher-page">
-  <canvas id="bg-demo-canvas" class="launcher-bg-canvas" aria-hidden="true"></canvas>
+  <div class="launcher-bg-canvas launcher-optic" aria-hidden="true">
+    <svg viewBox="0 0 960 300" preserveAspectRatio="xMidYMid meet" focusable="false">
+      <defs>
+        <linearGradient id="launcher-beam-fade" x1="0" y1="0" x2="390" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#ddf7f8" stop-opacity="0" />
+          <stop offset=".68" stop-color="#ddf7f8" stop-opacity=".18" />
+          <stop offset="1" stop-color="#ddf7f8" stop-opacity=".56" />
+        </linearGradient>
+        <linearGradient id="launcher-glass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ddf7f8" stop-opacity=".11" />
+          <stop offset="1" stop-color="#ddf7f8" stop-opacity=".018" />
+        </linearGradient>
+        <linearGradient id="launcher-ray-mask" x1="420" y1="0" x2="960" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="white" stop-opacity=".82" />
+          <stop offset=".72" stop-color="white" stop-opacity=".24" />
+          <stop offset="1" stop-color="white" stop-opacity="0" />
+        </linearGradient>
+        <mask id="launcher-rays-fade" maskUnits="userSpaceOnUse" x="420" y="80" width="540" height="120">
+          <rect x="420" y="80" width="540" height="120" fill="url(#launcher-ray-mask)" />
+        </mask>
+      </defs>
+      <path class="launcher-optic-beam" d="M0 142 H392" />
+      <g class="launcher-optic-spectrum" mask="url(#launcher-rays-fade)">
+        <path class="launcher-ray launcher-ray-violet" d="M418 143 L960 104" />
+        <path class="launcher-ray launcher-ray-blue" d="M418 143 L960 119" />
+        <path class="launcher-ray launcher-ray-cyan" d="M418 143 L960 135" />
+        <path class="launcher-ray launcher-ray-amber" d="M418 143 L960 151" />
+        <path class="launcher-ray launcher-ray-red" d="M418 143 L960 169" />
+      </g>
+      <path class="launcher-optic-prism" d="M410 109 L447 173 L373 173 Z" />
+    </svg>
+  </div>
   <div class="launcher-grain"></div>
   <div class="launcher-vignette"></div>
 
-  <header class="launcher-nav" aria-label="Lugh: ONE status">
-    <span class="launcher-wordmark">LUGH<span>:</span>ONE</span>
-    <span class="launcher-online"><i></i> OPTICAL SYSTEM ONLINE</span>
-  </header>
-
   <main class="launcher-content">
     <section class="launcher-hero" aria-labelledby="launcher-title">
-      <p class="launcher-kicker">A MULTI-WINDOW LIGHT PUZZLE</p>
-      <h1 id="launcher-title" class="launcher-title">Lugh<span class="launcher-title-colon">:</span><br />ONE</h1>
+      <h1 id="launcher-title" class="launcher-title">
+        <span class="launcher-title-lugh">Lugh<span class="launcher-title-colon">:</span></span>
+        <span class="launcher-title-one">ONE</span>
+      </h1>
       <p class="launcher-tagline">MOVE THE INSTRUMENTS.<br />SHAPE THE LIGHT.</p>
-      <p class="launcher-intro">Turn browser windows into optical instruments. Move them across your desktop to reflect, bend, split, and balance a living beam of light.</p>
 
       <div class="launcher-actions">
-        <div class="launcher-action-buttons">
-          <button id="start-btn" class="launcher-begin-btn" type="button">
-            <span>BEGIN EXPERIMENT</span><b aria-hidden="true">&rarr;</b>
-          </button>
-          <button id="tutorial-btn" class="launcher-tutorial-btn" type="button">
-            <span aria-hidden="true">?</span> 튜토리얼 보기
-          </button>
-        </div>
+        <button id="start-btn" class="launcher-begin-btn" type="button">
+          <span>BEGIN EXPERIMENT</span>
+        </button>
         <div id="status" class="launcher-status" role="status" aria-live="polite"></div>
       </div>
 
       <div id="error-panel" class="launcher-access-panel" role="alert">
-        <div class="launcher-access-title">WINDOW ACCESS REQUIRED</div>
+        <div id="error-title" class="launcher-access-title">WINDOW ACCESS REQUIRED</div>
         <p class="launcher-access-copy">Lugh: ONE uses movable browser windows as physical instruments.</p>
         <div id="error-message" class="launcher-access-message"></div>
-        <button id="retry-btn" class="launcher-allow-btn" type="button">ALLOW &amp; CONTINUE</button>
+        <button id="retry-btn" class="launcher-allow-btn" type="button">ALLOW ACCESS</button>
+        <p class="launcher-access-note">POP-UPS AND WINDOW MANAGEMENT ARE REQUIRED.</p>
       </div>
-
-      <p class="launcher-system-status"><span>CHROME DESKTOP</span><span>MULTI-WINDOW</span><span>HEADPHONES RECOMMENDED</span></p>
     </section>
 
     <aside class="launcher-mission" aria-labelledby="active-level-name">
@@ -80,12 +101,13 @@
           <li>Keep every receiver in range until the signal stabilizes.</li>
         </ol>
       </details>
+
+      <button id="tutorial-btn" class="launcher-tutorial-btn" type="button">OPEN FIELD GUIDE</button>
     </aside>
   </main>
 
   <footer class="launcher-footer">
-    <span>LIGHT LAB / BUILD 02</span>
-    <span>YOUR PROGRESS SAVES AUTOMATICALLY</span>
+    <span>CHROME DESKTOP<br />WINDOW MANAGEMENT REQUIRED</span>
   </footer>
 
   <div id="onboarding" class="onboarding" hidden>

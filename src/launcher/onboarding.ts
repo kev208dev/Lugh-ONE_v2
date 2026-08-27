@@ -40,8 +40,8 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     eyebrow: '실험 준비 완료',
     title: '이제 첫 번째 빛을 연결하세요',
     description:
-      'Chrome의 팝업을 허용하고 열린 장치 창을 모두 유지하세요. 각 레벨은 새로운 장치와 더 정교한 색 균형을 요구합니다.',
-    lesson: '막히면 R로 레벨을 초기화하세요. 완료한 실험은 자동으로 저장됩니다.'
+      'Chrome의 팝업을 허용하고 열린 장치 창을 모두 유지하세요. 후반의 성운은 닿은 빛을 전부 흡수하므로 우회 경로를 만들어야 합니다.',
+    lesson: '성운은 움직일 수 없는 벽입니다. 막히면 R로 레벨을 초기화하세요.'
   }
 ] as const;
 

@@ -16,6 +16,7 @@ export default defineConfig({
         sun: resolve(__dirname, 'sun.html'),
         mirror: resolve(__dirname, 'mirror.html'),
         blackhole: resolve(__dirname, 'blackhole.html'),
+        nebula: resolve(__dirname, 'nebula.html'),
         prism: resolve(__dirname, 'prism.html'),
         earth: resolve(__dirname, 'earth.html'),
         mars: resolve(__dirname, 'mars.html')

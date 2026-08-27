@@ -2,11 +2,12 @@ import type { WindowGeometry } from '../runtime/types';
 import { bootstrapDevicePage } from './deviceBootstrap';
 import { SunRenderer } from '../devices/Sun';
 import { LightRenderer } from '../rendering/LightRenderer';
-import { centerGlobal, windowRectGlobal, globalToLocal } from '../runtime/globalCoords';
+import { windowRectGlobal, globalToLocal } from '../runtime/globalCoords';
 import { clipSegmentToRect } from '../optics/Ray';
 import { currentLevel } from '../level/session';
 import { CANON_CHAIN_ORDER, devicesForLevel } from '../level/types';
 import type { DeviceId } from '../runtime/types';
+import { parallelRayFromSun, straightRayFromSun } from '../optics/upstream';
 
 const sunCanvas = document.getElementById('sun-canvas') as HTMLCanvasElement;
 new SunRenderer(sunCanvas);
@@ -30,8 +31,14 @@ function renderOutgoing(): void {
     rayRenderer.clear();
     return;
   }
-  const p1 = centerGlobal(selfGeometry);
-  const p2 = centerGlobal(downstreamGeometry);
+  const ray = downstreamId === 'blackhole'
+    ? parallelRayFromSun(selfGeometry, downstreamGeometry)
+    : straightRayFromSun(selfGeometry, downstreamGeometry);
+  const p1 = ray.originGlobal;
+  const p2 = {
+    x: p1.x + ray.directionGlobal.x * 1_000_000,
+    y: p1.y + ray.directionGlobal.y * 1_000_000
+  };
   const myRect = windowRectGlobal(selfGeometry);
   const clipped = clipSegmentToRect(p1, p2, myRect);
   if (!clipped) {

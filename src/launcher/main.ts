@@ -1,6 +1,5 @@
 import { WindowManager } from '../runtime/WindowManager';
 import { requestWindowManagementPermissionInBackground } from '../runtime/screenLayout';
-import { LauncherBackgroundDemo } from './backgroundDemo';
 import { LEVELS } from '../level/levels';
 import { loadProgress, markSolved } from '../level/progression';
 import { createMessageBus } from '../runtime/MessageBus';
@@ -9,16 +8,12 @@ import { SolvedBanner } from '../rendering/SolvedBanner';
 import { devicesForLevel, type PuzzleState } from '../level/types';
 import { createOnboarding } from './onboarding';
 
-// Decorative only — never allowed to block or fail the real launch flow, so
-// it's wired up independently of the critical-element guard below.
-const bgCanvas = document.querySelector<HTMLCanvasElement>('#bg-demo-canvas');
-if (bgCanvas) {
-  new LauncherBackgroundDemo(bgCanvas).start();
-}
+const LAUNCH_TRANSITION_MS = 820;
 
 const startBtnQ = document.querySelector<HTMLButtonElement>('#start-btn');
 const statusElQ = document.querySelector<HTMLDivElement>('#status');
 const errorPanelQ = document.querySelector<HTMLDivElement>('#error-panel');
+const errorTitleQ = document.querySelector<HTMLDivElement>('#error-title');
 const errorMessageElQ = document.querySelector<HTMLDivElement>('#error-message');
 const retryBtnQ = document.querySelector<HTMLButtonElement>('#retry-btn');
 const startBtnLabelQ = startBtnQ?.querySelector<HTMLSpanElement>('span');
@@ -38,6 +33,7 @@ if (
   !startBtnLabelQ ||
   !statusElQ ||
   !errorPanelQ ||
+  !errorTitleQ ||
   !errorMessageElQ ||
   !retryBtnQ ||
   !progressLabelQ ||
@@ -61,6 +57,7 @@ if (
 const startBtn: HTMLButtonElement = startBtnQ;
 const statusEl: HTMLDivElement = statusElQ;
 const errorPanel: HTMLDivElement = errorPanelQ;
+const errorTitle: HTMLDivElement = errorTitleQ;
 const errorMessageEl: HTMLDivElement = errorMessageElQ;
 const retryBtn: HTMLButtonElement = retryBtnQ;
 const startBtnLabel: HTMLSpanElement = startBtnLabelQ;
@@ -169,14 +166,62 @@ function setStatus(text: string): void {
   statusEl.textContent = text;
 }
 
-function showError(message: string): void {
+type AccessErrorOptions = {
+  title?: string;
+  actionLabel?: string;
+  actionAvailable?: boolean;
+};
+
+function showError(message: string, options: AccessErrorOptions = {}): void {
+  errorTitle.textContent = options.title ?? 'WINDOW ACCESS REQUIRED';
   errorMessageEl.textContent = message;
+  retryBtn.textContent = options.actionLabel ?? 'ALLOW ACCESS';
+  retryBtn.hidden = options.actionAvailable === false;
   errorPanel.classList.add('visible');
+  document.body.classList.add('access-required');
 }
 
 function hideError(): void {
   errorPanel.classList.remove('visible');
   errorMessageEl.textContent = '';
+  retryBtn.hidden = false;
+  document.body.classList.remove('access-required');
+}
+
+function setLaunchBusy(busy: boolean): void {
+  startBtn.disabled = busy;
+  retryBtn.disabled = busy;
+  for (const button of [startBtn, retryBtn]) {
+    if (busy) {
+      button.setAttribute('aria-busy', 'true');
+    } else {
+      button.removeAttribute('aria-busy');
+    }
+  }
+}
+
+function beginLaunchTransition(): number {
+  document.body.classList.add('is-launching');
+  setLaunchBusy(true);
+  return performance.now();
+}
+
+async function finishLaunchTransition(startedAt: number): Promise<void> {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const remaining = (reduceMotion ? 0 : LAUNCH_TRANSITION_MS) - (performance.now() - startedAt);
+  if (remaining > 0) {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
+  }
+  document.body.classList.remove('is-launching');
+  setLaunchBusy(false);
+}
+
+async function showLaunchError(message: string, startedAt: number): Promise<void> {
+  await finishLaunchTransition(startedAt);
+  document.body.classList.remove('experiment-active');
+  setStatus('');
+  showError(message, { actionLabel: 'TRY AGAIN' });
+  retryBtn.focus({ preventScroll: true });
 }
 
 function isChromiumFamily(): boolean {
@@ -218,16 +263,18 @@ async function runLaunchFlow(): Promise<void> {
   // partial state somehow survived.
   manager.closeAll();
 
-  startBtn.disabled = true;
+  setLaunchBusy(true);
 
   if (!isChromiumFamily()) {
-    setStatus('');
-    showError('이 실험은 Chrome(또는 Chromium 기반) 브라우저에서만 동작합니다.');
-    startBtn.disabled = false;
+    setLaunchBusy(false);
+    showError('Open this experiment in Chrome on desktop.', {
+      title: 'CHROME DESKTOP REQUIRED',
+      actionAvailable: false
+    });
     return;
   }
 
-  setStatus('CALIBRATING...');
+  setStatus('WINDOW SYSTEM · CHECKING');
 
   if (hasWindowManagementApi()) {
     // Fire-and-forget: may prompt for permission, but this launch attempt
@@ -236,27 +283,26 @@ async function runLaunchFlow(): Promise<void> {
     requestWindowManagementPermissionInBackground();
   }
 
-  setStatus('CHECKING WINDOW ACCESS...');
   if (!testPopupCapability()) {
-    setStatus('');
-    showError('팝업이 차단되어 있습니다. Chrome 팝업 차단을 해제한 뒤 다시 시도하세요.');
-    startBtn.disabled = false;
+    setLaunchBusy(false);
+    showError('Allow pop-ups for this site, then try again.');
+    retryBtn.focus({ preventScroll: true });
     return;
   }
 
-  setStatus('OPENING INSTRUMENTS...');
+  setStatus('CALIBRATING LIGHT');
+  const transitionStartedAt = beginLaunchTransition();
 
   const level = LEVELS[activeLevelIndex];
   const result = await manager.launchAll(sessionId, level);
 
   if (result.ok) {
-    setStatus(`${String(level.index + 1).padStart(2, '0')} · ${level.name.toUpperCase()} — EXPERIMENT READY`);
-    startBtn.disabled = false;
+    await finishLaunchTransition(transitionStartedAt);
+    document.body.classList.add('experiment-active');
+    setStatus('WINDOW SYSTEM · READY');
     startBtnLabel.textContent = 'RESTART EXPERIMENT';
   } else {
-    setStatus('');
-    showError(result.error);
-    startBtn.disabled = false;
+    await showLaunchError('Window access was not granted. Allow pop-ups, then try again.', transitionStartedAt);
   }
 }
 
@@ -328,7 +374,3 @@ bus.subscribe((msg) => {
 });
 
 renderLevelOverview();
-
-if (onboarding.shouldOpenAutomatically()) {
-  onboarding.open();
-}

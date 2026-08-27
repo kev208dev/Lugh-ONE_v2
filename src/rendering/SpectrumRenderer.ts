@@ -60,15 +60,43 @@ export class SpectrumRenderer {
       for (const ray of rays) {
         const { r, g, b } = wavelengthToRgb(ray.wavelengthNm);
         const color = `rgb(${r},${g},${b})`;
+        const internalPath = ray.internalPath?.length
+          ? ray.internalPath
+          : [ray.entryPoint, ray.exitPoint];
         ctx.beginPath();
-        ctx.moveTo(ray.entryPoint.x, ray.entryPoint.y);
-        ctx.lineTo(ray.exitPoint.x, ray.exitPoint.y);
+        ctx.moveTo(internalPath[0].x, internalPath[0].y);
+        for (const point of internalPath.slice(1)) ctx.lineTo(point.x, point.y);
         ctx.strokeStyle = color;
         ctx.globalAlpha = 0.14;
         ctx.lineWidth = 5;
         ctx.stroke();
         ctx.globalAlpha = 0.72;
         ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Draw every outgoing wavelength independently as a guaranteed visible
+    // path. The filled fan below is richer when the rays form one continuous
+    // wedge, but individual strokes also cover grazing angles, tiny fan
+    // sweeps, and wavelengths that leave through different faces after TIR.
+    if (rays.length > 0) {
+      const rayLength = Math.hypot(canvas.width, canvas.height) * 1.35;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      for (const ray of rays) {
+        const { r, g, b } = wavelengthToRgb(ray.wavelengthNm);
+        ctx.beginPath();
+        ctx.moveTo(ray.exitPoint.x, ray.exitPoint.y);
+        ctx.lineTo(
+          ray.exitPoint.x + ray.exitDirection.x * rayLength,
+          ray.exitPoint.y + ray.exitDirection.y * rayLength
+        );
+        ctx.strokeStyle = `rgb(${r},${g},${b})`;
+        ctx.globalAlpha = 0.42;
+        ctx.lineWidth = 2.4;
         ctx.stroke();
       }
       ctx.restore();
