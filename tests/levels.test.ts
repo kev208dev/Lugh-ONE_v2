@@ -36,4 +36,13 @@ describe('LEVELS', () => {
     expect(veil.nebulae?.every((nebula) => nebula.attenuation === 1)).toBe(true);
     expect(devicesForLevel(veil)).toEqual(expect.arrayContaining(['nebula-1', 'nebula-2']));
   });
+
+  it('makes the fourth experiment a required black-hole puzzle', () => {
+    const gravity = LEVELS[3];
+    expect(gravity.id).toBe('gravity');
+    expect(gravity.requiredDevices).toContain('blackhole');
+    expect(devicesForLevel(gravity)).toEqual(
+      expect.arrayContaining(['sun', 'blackhole', 'prism', 'earth'])
+    );
+  });
 });

@@ -7,6 +7,7 @@ import { ExperimentAudio } from '../audio/ExperimentAudio';
 import { SolvedBanner } from '../rendering/SolvedBanner';
 import { devicesForLevel, type PuzzleState } from '../level/types';
 import { createOnboarding } from './onboarding';
+import { startSolvedSequence, type SolvedSequence } from './solvedSequence';
 
 const LAUNCH_TRANSITION_MS = 820;
 
@@ -83,7 +84,7 @@ let progress = loadProgress();
 const firstUnsolved = LEVELS.findIndex((level) => !progress.solvedLevelIds.includes(level.id));
 let activeLevelIndex = firstUnsolved >= 0 ? firstUnsolved : LEVELS.length - 1;
 let lastPuzzleState: PuzzleState = 'PLAYING';
-let solvedBannerTimer: ReturnType<typeof setTimeout> | undefined;
+let solvedSequence: SolvedSequence | undefined;
 let audio: ExperimentAudio | undefined;
 
 function experimentAudio(): ExperimentAudio {
@@ -106,12 +107,16 @@ function formatObjective(levelIndex: number): string {
   return `${receiverGoals.join('  ·  ')}  ·  HOLD ${Number.isInteger(holdSeconds) ? holdSeconds : holdSeconds.toFixed(1)}s`;
 }
 
+function clearSolvedSequence(): void {
+  solvedSequence?.cancel();
+  solvedSequence = undefined;
+}
+
 function selectLevel(index: number): void {
   if (index > unlockedThroughIndex() || index === activeLevelIndex) return;
   manager.closeAll();
   solvedBanner.hide();
-  if (solvedBannerTimer !== undefined) clearTimeout(solvedBannerTimer);
-  solvedBannerTimer = undefined;
+  clearSolvedSequence();
   audio?.stabilizingStop();
   lastPuzzleState = 'PLAYING';
   activeLevelIndex = index;
@@ -255,8 +260,7 @@ function testPopupCapability(): boolean {
 async function runLaunchFlow(): Promise<void> {
   hideError();
   solvedBanner.hide();
-  if (solvedBannerTimer !== undefined) clearTimeout(solvedBannerTimer);
-  solvedBannerTimer = undefined;
+  clearSolvedSequence();
   audio?.stabilizingStop();
   lastPuzzleState = 'PLAYING';
   // Defensive: a retry must never accumulate windows even if a previous
@@ -337,7 +341,11 @@ tutorialBtn.addEventListener('click', () => {
 });
 
 bus.subscribe((msg) => {
-  if (msg.type !== 'puzzle-state' || msg.state === lastPuzzleState) return;
+  if (
+    msg.type !== 'puzzle-state' ||
+    msg.levelId !== LEVELS[activeLevelIndex].id ||
+    msg.state === lastPuzzleState
+  ) return;
 
   if (msg.state === 'STABILIZING') {
     audio?.stabilizingStart();
@@ -347,27 +355,45 @@ bus.subscribe((msg) => {
 
   if (msg.state === 'SOLVED') {
     const level = LEVELS[activeLevelIndex];
+    const solvedLevelIndex = activeLevelIndex;
     progress = markSolved(level.id, level.index);
     renderLevelOverview();
     audio?.solved();
     solvedBanner.showStable();
     setStatus('EXPERIMENT STABLE');
-    solvedBannerTimer = setTimeout(() => {
-      solvedBanner.showSolved(
-        level.index + 1,
-        level.name,
-        () => {
-          experimentAudio().hover();
-          activeLevelIndex = (activeLevelIndex + 1) % LEVELS.length;
-          renderLevelOverview();
-          void runLaunchFlow();
-        },
-        () => {
-          experimentAudio().hover();
-          void runLaunchFlow();
+    clearSolvedSequence();
+    solvedSequence = startSolvedSequence({
+      currentLevelIndex: solvedLevelIndex,
+      levelCount: LEVELS.length,
+      onReveal: (nextLevelIndex, advance) => {
+        solvedBanner.showSolved(
+          level.index + 1,
+          level.name,
+          nextLevelIndex === null
+            ? null
+            : () => {
+                experimentAudio().hover();
+                advance();
+              },
+          () => {
+            experimentAudio().hover();
+            void runLaunchFlow();
+          }
+        );
+      },
+      onAdvance: (nextLevelIndex) => {
+        if (activeLevelIndex !== solvedLevelIndex) return;
+        activeLevelIndex = nextLevelIndex;
+        renderLevelOverview();
+        setStatus(`EXPERIMENT ${String(nextLevelIndex + 1).padStart(2, '0')} LOADING`);
+        try {
+          window.focus();
+        } catch {
+          // Some browsers deny programmatic focus; launching still proceeds.
         }
-      );
-    }, 1700);
+        void runLaunchFlow();
+      }
+    });
   }
 
   lastPuzzleState = msg.state;

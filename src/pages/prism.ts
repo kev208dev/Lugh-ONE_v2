@@ -259,6 +259,7 @@ function broadcastLevelState(
     });
     bus.send({
       type: 'puzzle-state',
+      levelId: level.id,
       state: tick.state,
       holdProgress: tick.holdProgress,
       satisfied: evaluation.satisfied,

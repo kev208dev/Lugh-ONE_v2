@@ -118,6 +118,9 @@ export type BusMessage =
    * puzzle/GoalEvaluator.ts's GoalEvaluation shape directly. */
   | {
       type: 'puzzle-state';
+      /** Identifies the popup's experiment so a closing window cannot
+       * accidentally solve the experiment that is launching next. */
+      levelId: string;
       state: 'INTRO' | 'PLAYING' | 'STABILIZING' | 'SOLVED' | 'TRANSITIONING';
       holdProgress: number;
       satisfied: boolean;
